@@ -8,7 +8,7 @@ ifneq (${KERNELRELEASE},)
 # Invoke the kernel build system.
 else
 
-KERNEL_SOURCE := /mnt/melchior/projects/kernel/linux-3.8.8/
+KERNEL_SOURCE := /usr/src/linux
 PWD := $(shell pwd)
 
 default:
