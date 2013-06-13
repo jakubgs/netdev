@@ -1,3 +1,4 @@
+#include <linux/compiler.h>
 #include <linux/module.h>
 #include <linux/version.h>
 #include <linux/kernel.h>
@@ -36,57 +37,115 @@ static void pk(const char * name) {
     printk(KERN_INFO "netdev: File Operation called - %s\n", name);
 }
 
-loff_t  netdev_fo_llseek (struct file *a, loff_t b, int c)
+loff_t  netdev_fo_llseek (struct file *a,
+                        loff_t b,
+                        int c)
 { pk("llseek"); return -EIO; }
-ssize_t netdev_fo_read (struct file *a, char __user *b, size_t c, loff_t *d)
+ssize_t netdev_fo_read (struct file *a,
+                        char __user *b,
+                        size_t c,
+                        loff_t *d)
 { pk("read"); return -EIO; }
-ssize_t netdev_fo_write (struct file *a, const char __user *b, size_t c, loff_t *d)
+ssize_t netdev_fo_write (struct file *a,
+                        const char __user *b,
+                        size_t c,
+                        loff_t *d)
 { pk("write"); return -EIO; }
-ssize_t netdev_fo_aio_read (struct kiocb *a, const struct iovec *b, unsigned long c, loff_t d)
+ssize_t netdev_fo_aio_read (struct kiocb *a,
+                        const struct iovec *b,
+                        unsigned long c,
+                        loff_t d)
 { pk("aio_read"); return -EIO; }
-ssize_t netdev_fo_aio_write (struct kiocb *a, const struct iovec *b, unsigned long c, loff_t d)
+ssize_t netdev_fo_aio_write (struct kiocb *a,
+                        const struct iovec *b,
+                        unsigned long c,
+                        loff_t d)
 { pk("aio_write"); return -EIO; }
-int     netdev_fo_readdir (struct file *a, void *b, filldir_t c)
+int     netdev_fo_readdir (struct file *a,
+                        void *b,
+                        filldir_t c)
 { pk("readdir"); return -EIO; }
-unsigned int netdev_fo_poll (struct file *a, struct poll_table_struct *b)
+unsigned int netdev_fo_poll (struct file *a,
+                        struct poll_table_struct *b)
 { pk("poll"); return -EIO; }
-long    netdev_fo_unlocked_ioctl (struct file *a, unsigned int b, unsigned long c)
+long    netdev_fo_unlocked_ioctl (struct file *a,
+                        unsigned int b,
+                        unsigned long c)
 { pk("unlocked_ioctl"); return -EIO; }
-long    netdev_fo_compat_ioctl (struct file *a, unsigned int b, unsigned long c)
+long    netdev_fo_compat_ioctl (struct file *a,
+                        unsigned int b,
+                        unsigned long c)
 { pk("compat_ioctl"); return -EIO; }
-int     netdev_fo_mmap (struct file *a, struct vm_area_struct *b)
+int     netdev_fo_mmap (struct file *a,
+                        struct vm_area_struct *b)
 { pk("mmap"); return -EIO; }
-int     netdev_fo_open (struct inode *a, struct file *b)
+int     netdev_fo_open (struct inode *a,
+                        struct file *b)
 { pk("open"); return 0; } /* returns success just to see other operations */
-int     netdev_fo_flush (struct file *a, fl_owner_t id)
+int     netdev_fo_flush (struct file *a,
+                        fl_owner_t id)
 { pk("flush"); return -EIO; }
-int     netdev_fo_release (struct inode *a, struct file *b)
+int     netdev_fo_release (struct inode *a,
+                        struct file *b)
 { pk("release"); return 0; }
-int     netdev_fo_fsync (struct file *a, loff_t b, loff_t c, int d)
+int     netdev_fo_fsync (struct file *a,
+                        loff_t b,
+                        loff_t c,
+                        int d)
 { pk("fsync"); return -EIO; }
-int     netdev_fo_aio_fsync (struct kiocb *a, int b)
+int     netdev_fo_aio_fsync (struct kiocb *a,
+                        int b)
 { pk("aio_fsync"); return -EIO; }
-int     netdev_fo_fasync (int a, struct file *b, int c)
+int     netdev_fo_fasync (int a,
+                        struct file *b,
+                        int c)
 { pk("fasync"); return -EIO; }
-int     netdev_fo_lock (struct file *a, int b, struct file_lock *c)
+int     netdev_fo_lock (struct file *a,
+                        int b,
+                        struct file_lock *c)
 { pk("lock"); return -EIO; }
-ssize_t netdev_fo_sendpage (struct file *a, struct page *b, int c, size_t d, loff_t *e, int f)
+ssize_t netdev_fo_sendpage (struct file *a,
+                        struct page *b,
+                        int c,
+                        size_t d,
+                        loff_t *e,
+                        int f)
 { pk("sendpage"); return -EIO; }
-unsigned long netdev_fo_get_unmapped_area(struct file *a, unsigned long b, unsigned long c, unsigned long d, unsigned long e)
+unsigned long netdev_fo_get_unmapped_area(struct file *a,
+                        unsigned long b,
+                        unsigned long c,
+                        unsigned long d,
+                        unsigned long e)
 { pk("get_unmapped_are"); return -EIO; }
 int     netdev_fo_check_flags(int a)
 { pk("check_flag"); return -EIO; }
-int     netdev_fo_flock (struct file *a, int b, struct file_lock *c)
+int     netdev_fo_flock (struct file *a,
+                        int b,
+                        struct file_lock *c)
 { pk("flock"); return -EIO; }
-ssize_t netdev_fo_splice_write(struct pipe_inode_info *a, struct file *b, loff_t *c, size_t d, unsigned int e)
+ssize_t netdev_fo_splice_write(struct pipe_inode_info *a,
+                        struct file *b,
+                        loff_t *c,
+                        size_t d,
+                        unsigned int e)
 { pk("splice_writ"); return -EIO; }
-ssize_t netdev_fo_splice_read(struct file *a, loff_t *b, struct pipe_inode_info *c, size_t d, unsigned int e)
+ssize_t netdev_fo_splice_read(struct file *a,
+                        loff_t *b,
+                        struct pipe_inode_info *c,
+                        size_t d,
+                        unsigned int e)
 { pk("splice_rea"); return -EIO; }
-int     netdev_fo_setlease(struct file *a, long b, struct file_lock **c)
+int     netdev_fo_setlease(struct file *a,
+                        long b,
+                        struct file_lock **c)
 { pk("setleas"); return -EIO; }
-long    netdev_fo_fallocate(struct file *a, int b, loff_t offset, loff_t len)
+long    netdev_fo_fallocate(struct file *a,
+                        int b, loff_t offset,
+                        loff_t len)
 { pk("fallocat"); return -EIO; }
-int     netdev_fo_show_fdinfo(struct seq_file *a, struct file *b) { pk("show_fdinf"); return -EIO; }
+int     netdev_fo_show_fdinfo(struct seq_file *a,
+                        struct file *b)
+{ pk("show_fdinf"); return -EIO; }
 
 struct file_operations netdev_fops = {
     .owner              = THIS_MODULE,
@@ -171,20 +230,28 @@ static int __init netdev_init(void) /* Constructor */
     err = cdev_add(&dev->cdev, devno, 1);
 
     /* Unlikely but might fail */
-    if (err) {
+    if (unlikely(err)) {
         printk(KERN_ERR "Error %d adding netdev\n", err);
         goto fail;
     }
 
-    dev->device = device_create(netdev_class, NULL, devno, NULL, NETDEV_NAME "%d", MINOR(devno));
+    dev->device = device_create(netdev_class, NULL,
+                                devno, NULL,
+                                NETDEV_NAME "%d",
+                                MINOR(devno));
    
     if (IS_ERR(dev->device)) {
        err = PTR_ERR(dev->device);
-       printk(KERN_WARNING "[target] Error %d while trying to create %s%d\n", err, NETDEV_NAME, MINOR(devno));
+       printk(KERN_WARNING "[target] Error %d while trying to create %s%d\n",
+                            err,
+                            NETDEV_NAME,
+                            MINOR(devno));
        goto fail;
     }
 
-    printk(KERN_DEBUG "netdev: This is my new device: %d, %d\n", MAJOR(devno), MINOR(devno));
+    printk(KERN_DEBUG "netdev: This is my new device: %d, %d\n",
+                        MAJOR(devno), 
+                        MINOR(devno));
     return 0; /* success */
     
 fail:
