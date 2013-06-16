@@ -9,7 +9,9 @@ ifneq (${KERNELRELEASE},)
 else
 
 KERNEL_SOURCE := /usr/src/linux
-PWD := $(shell pwd)
+PWD 		:= $(shell pwd)
+WARN   		:= -W -Wall -Wstrict-prototypes -Wmissing-prototypes
+ccflags-y 	:= ${WARN}
 
 default:
 	${MAKE} -C ${KERNEL_SOURCE} M=${PWD} modules
