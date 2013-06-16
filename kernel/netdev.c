@@ -14,7 +14,7 @@
 MODULE_VERSION("0.0.1");
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Jakub Sokołowski <panswiata_at_gmail_com>");
-MODULE_DESCRIPTION("This is my first kernel driver.");
+MODULE_DESCRIPTION("This is my first kernel driver. Please don't use it...");
 
 #define NETDEV_NAME "netdev"
 
@@ -263,7 +263,6 @@ static void netdev_cleanup(void) {
         cdev_del(&dev->cdev);
 
         device_destroy(netdev_class, devno);
-
     }
 
     if (netdev_class)
