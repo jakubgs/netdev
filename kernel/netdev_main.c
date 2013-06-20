@@ -11,6 +11,7 @@
 #include <linux/slab.h>     /* kmalloc, kzalloc, kfree and so on */
 #include <linux/netlink.h>  /* for netlink sockets */
 
+#include "netdev_main.h"
 #include "fo.h"
 #include "netlink.h"
 
@@ -50,7 +51,7 @@ loff_t  netdev_fo_llseek (
                             loff_t offset,
                             int whence)
 {
-    pk("llseek");
+    pk(__FUNCTION__);
     return netdev_fo_llseek_send_req(filp, offset, whence);
 }
 ssize_t netdev_fo_read (
@@ -59,7 +60,7 @@ ssize_t netdev_fo_read (
                             size_t c,
                             loff_t *offset)
 { 
-    pk("read");
+    pk(__FUNCTION__);
     return netdev_fo_read_send_req(filp, data, c, offset);
 }
 ssize_t netdev_fo_write (
@@ -68,7 +69,7 @@ ssize_t netdev_fo_write (
                             size_t c,
                             loff_t *offset)
 {
-    pk("write");
+    pk(__FUNCTION__);
     return netdev_fo_write_send_req(filp, data, c, offset);
 }
 ssize_t netdev_fo_aio_read (
@@ -77,7 +78,7 @@ ssize_t netdev_fo_aio_read (
                             unsigned long c,
                             loff_t offset)
 {
-    pk("aio_read");
+    pk(__FUNCTION__);
     return netdev_fo_aio_read_send_req(a, b ,c, offset);
 }
 ssize_t netdev_fo_aio_write (
@@ -86,7 +87,7 @@ ssize_t netdev_fo_aio_write (
                             unsigned long c,
                             loff_t offset)
 {
-    pk("aio_write");
+    pk(__FUNCTION__);
     return netdev_fo_aio_write_send_req(a, b, c, offset);
 }
 int     netdev_fo_readdir (
@@ -94,14 +95,14 @@ int     netdev_fo_readdir (
                             void *b,
                             filldir_t c)
 {
-    pk("readdir");
+    pk(__FUNCTION__);
     return netdev_fo_readdir_send_req(filp, b, c);
 }
 unsigned int netdev_fo_poll (
                             struct file *filp,
                             struct poll_table_struct *wait)
 {
-    pk("poll");
+    pk(__FUNCTION__);
     return netdev_fo_poll_send_req(filp, wait);
 }
 long    netdev_fo_unlocked_ioctl (
@@ -109,7 +110,7 @@ long    netdev_fo_unlocked_ioctl (
                             unsigned int b,
                             unsigned long c)
 {
-    pk("unlocked_ioctl");
+    pk(__FUNCTION__);
     return netdev_fo_unlocked_ioctl_send_req(filp, b, c);
 }
 long    netdev_fo_compat_ioctl (
@@ -117,35 +118,35 @@ long    netdev_fo_compat_ioctl (
                             unsigned int b,
                             unsigned long c)
 {
-    pk("compat_ioctl");
+    pk(__FUNCTION__);
     return netdev_fo_compat_ioctl_send_req(filp, b, c);
 }
 int     netdev_fo_mmap (
                             struct file *filp,
                             struct vm_area_struct *b)
 {
-    pk("mmap");
+    pk(__FUNCTION__);
     return netdev_fo_mmap_send_req(filp, b);
 }
 int     netdev_fo_open (
                             struct inode *inode,
                             struct file *filp)
 {
-    pk("open");
+    pk(__FUNCTION__);
     return netdev_fo_open_send_req(inode, filp);
 }
 int     netdev_fo_flush (
                             struct file *filp,
                             fl_owner_t id)
 {
-    pk("flush");
+    pk(__FUNCTION__);
     return netdev_fo_flush_send_req(filp, id);
 }
 int     netdev_fo_release (
                             struct inode *a,
                             struct file *b)
 {
-    pk("release");
+    pk(__FUNCTION__);
     return netdev_fo_release_send_req(a, b);
 }
 int     netdev_fo_fsync (
@@ -154,14 +155,14 @@ int     netdev_fo_fsync (
                             loff_t c,
                             int d)
 {
-    pk("fsync");
+    pk(__FUNCTION__);
     return netdev_fo_fsync_send_req(filp, b, c, d);
 }
 int     netdev_fo_aio_fsync (
                             struct kiocb *a,
                             int b)
 {
-    pk("aio_fsync");
+    pk(__FUNCTION__);
     return netdev_fo_aio_fsync_send_req(a, b);
 }
 int     netdev_fo_fasync (
@@ -169,7 +170,7 @@ int     netdev_fo_fasync (
                             struct file *b,
                             int c)
 {
-    pk("fasync");
+    pk(__FUNCTION__);
     return netdev_fo_fasync_send_req(a, b, c);
 }
 int     netdev_fo_lock (
@@ -177,7 +178,7 @@ int     netdev_fo_lock (
                             int b,
                             struct file_lock *c)
 {
-    pk("lock");
+    pk(__FUNCTION__);
     return netdev_fo_lock_send_req(filp, b, c);
 }
 ssize_t netdev_fo_sendpage (
@@ -188,7 +189,7 @@ ssize_t netdev_fo_sendpage (
                             loff_t *offset,
                             int f)
 {
-    pk("sendpage");
+    pk(__FUNCTION__);
     return netdev_fo_sendpage_send_req(filp, b, c, d, offset, f);
 }
 unsigned long netdev_fo_get_unmapped_area(
@@ -198,13 +199,13 @@ unsigned long netdev_fo_get_unmapped_area(
                             unsigned long d,
                             unsigned long e)
 {
-    pk("get_unmapped_are");
+    pk(__FUNCTION__);
     return netdev_fo_get_unmapped_area_send_req(filp, b, c, d, e);
 }
 int     netdev_fo_check_flags(
                             int a)
 {
-    pk("check_flag");
+    pk(__FUNCTION__);
     return netdev_fo_check_flags_send_req(a);
 }
 int     netdev_fo_flock (
@@ -212,7 +213,7 @@ int     netdev_fo_flock (
                             int b,
                             struct file_lock *c)
 {
-    pk("flock");
+    pk(__FUNCTION__);
     return netdev_fo_flock_send_req(filp, b, c);
 }
 ssize_t netdev_fo_splice_write(
@@ -222,7 +223,7 @@ ssize_t netdev_fo_splice_write(
                             size_t d,
                             unsigned int e)
 {
-    pk("splice_writ");
+    pk(__FUNCTION__);
     return netdev_fo_splice_write_send_req(a, filp, offset, d, e);
 }
 ssize_t netdev_fo_splice_read(
@@ -232,7 +233,7 @@ ssize_t netdev_fo_splice_read(
                             size_t d,
                             unsigned int e)
 {
-    pk("splice_rea");
+    pk(__FUNCTION__);
     return netdev_fo_splice_read_send_req(filp, offset, c, d, e);
 }
 int     netdev_fo_setlease(
@@ -240,7 +241,7 @@ int     netdev_fo_setlease(
                             long b,
                             struct file_lock **c)
 {
-    pk("setleas");
+    pk(__FUNCTION__);
     return netdev_fo_setlease_send_req(filp, b, c);
 }
 long    netdev_fo_fallocate(
@@ -249,14 +250,14 @@ long    netdev_fo_fallocate(
                             loff_t offset,
                             loff_t len)
 {
-    pk("fallocat");
+    pk(__FUNCTION__);
     return netdev_fo_fallocate_send_req(filp, b, offset, len);
 }
 int netdev_fo_show_fdinfo(
                             struct seq_file *a,
                             struct file *filp)
 {
-    pk("show_fdinf");
+    pk(__FUNCTION__);
     return netdev_fo_show_fdinfo_send_req(a, filp);
 }
 
