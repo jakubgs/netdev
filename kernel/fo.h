@@ -4,36 +4,6 @@
 #include <linux/types.h>
 #include <linux/fs.h>
 
-/* Definitions used to distinguis between file operation structures
- * that contain all the functiona arguments, best used with short or __u16
- * Will be either used in nlmsghdr->nlmsg_type or some inner variable */
-#define FO_LLSEEK               101
-#define FO_READ                 102
-#define FO_WRITE                103
-#define FO_AIO_READ             104
-#define FO_AIO_WRITE            105
-#define FO_READDIR              106
-#define FO_POLL                 107
-#define FO_UNLOCKED_IOCTL       108
-#define FO_COMPAT_IOCTL         109
-#define FO_MMAP                 110
-#define FO_OPEN                 111
-#define FO_FLUSH                112
-#define FO_RELEASE              113
-#define FO_FSYNC                114
-#define FO_AIO_FSYNC            115
-#define FO_FASYNC               116
-#define FO_LOCK                 117
-#define FO_SENDPAGE             118
-#define FO_GET_UNMAPPED_AREA    119
-#define FO_CHECK_FLAGS          120
-#define FO_FLOCK                121
-#define FO_SPLICE_WRITE         122
-#define FO_SPLICE_READ          123
-#define FO_SETLEASE             124
-#define FO_FALLOCATE            125
-#define FO_SHOW_FDINF           126
-
 /* used for sending file operations converted by send_req functions to 
  * a buffer of certian size to the loop sending operations whtough netlink
  * to the server process */
