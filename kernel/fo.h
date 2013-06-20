@@ -202,4 +202,4 @@ int netdev_fo_setlease_send_req (struct file *filp, long b, struct file_lock **c
 long netdev_fo_fallocate_send_req (struct file *filp, int b, loff_t offset, loff_t len);
 int netdev_fo_show_fdinfo_send_req (struct seq_file *a, struct file *filp);
 
-#endif /* _AHCI_H */
+#endif /* _FO_H */
