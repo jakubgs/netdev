@@ -1,6 +1,9 @@
 #ifndef _FO_H
 #define _FO_H
 
+#include <linux/types.h>
+#include <linux/fs.h>
+
 /* Definitions used to distinguis between file operation structures
  * that contain all the functiona arguments, best used with short or __u16
  * Will be either used in nlmsghdr->nlmsg_type or some inner variable */
