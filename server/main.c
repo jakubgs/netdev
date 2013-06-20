@@ -38,8 +38,9 @@ int main() {
     nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
     nlh->nlmsg_pid = getpid();
     nlh->nlmsg_flags = 0;
+    nlh->nlmsg_type = NETDEV_REG;
 
-    strcpy(NLMSG_DATA(nlh), "Hello");
+    strcpy(NLMSG_DATA(nlh), "Register device for sharing");
 
     iov.iov_base = (void *)nlh;
     iov.iov_len = nlh->nlmsg_len;
@@ -53,7 +54,10 @@ int main() {
     printf("Waiting for message from kernel\n");
 
     /* Read message from kernel */
-    recvmsg(sock_fd, &msg, 0);
-    printf("Received message payload: %s\n", NLMSG_DATA(nlh));
+    for ( ; ; ) {
+        recvmsg(sock_fd, &msg, 0);
+        printf("Received message payload: %s\n", (char*)NLMSG_DATA(nlh));
+    }
+
     close(sock_fd);
 }
