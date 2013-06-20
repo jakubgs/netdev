@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <linux/netlink.h>
 
+// defines the protocol used, we want our own protocol
 #define NETLINK_USER 31
 
 #define MAX_PAYLOAD 1024 /* maximum payload size*/
@@ -53,6 +54,6 @@ int main() {
 
     /* Read message from kernel */
     recvmsg(sock_fd, &msg, 0);
-    printf("Received message payload: %s\n", (char *)NLMSG_DATA(nlh));
+    printf("Received message payload: %s\n", NLMSG_DATA(nlh));
     close(sock_fd);
 }
