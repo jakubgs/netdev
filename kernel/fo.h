@@ -10,6 +10,7 @@
 int send_fo (short fl_flag, const char *data, size_t size);
 
 /* structures used to pass file operation arguments to sending function */
+/* TODO add return values of functions as "rvalue" or something like that */
 struct s_fo_llseek {
     struct file *flip;
     loff_t offset;

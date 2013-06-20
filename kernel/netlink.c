@@ -6,8 +6,14 @@
 #define NETLINK_USER 31
 
 struct sock *nl_sk = NULL;
+/* TODO this will have to be part of a struct that will contain information
+ * about the device this driver will pretend to be received from the server
+ * process */
 int pid;
 
+/* TODO this will have to be modified to receive responses from server process,
+ * find the appropriate wait queue and release it once the reply is assigned
+ * to appropriate variables in struct describing one pending file operaion */
 void netlink_recv(struct sk_buff *skb) {
     struct nlmsghdr *nlh;
     struct sk_buff *skb_out;
@@ -44,6 +50,8 @@ void netlink_recv(struct sk_buff *skb) {
 
 }
 
+/* TODO should receive not only msgtype but also a buffer with properly 
+ * formatted arguments to the file operation from the netdev_fo_OP_send_req */
 int netlink_send(short msgtype) {
     struct nlmsghdr *nlh;
     struct sk_buff *skb_out;
@@ -102,6 +110,8 @@ void netlink_exit(void) {
     printk(KERN_INFO "exiting hello module\n");
     // TODO will have to close connections of all devices with the server process
 
+    /* can only be done once the process releases the socket, otherwise
+     * kernel will refuse to unload the module */
     netlink_kernel_release(nl_sk);
 }
 

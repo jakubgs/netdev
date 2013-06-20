@@ -27,9 +27,9 @@ struct netdev_data {
     struct cdev cdev;
     struct device *device;
     /* TODO
-     * this struct will containt more data
-     * especially about host of the device
-     * and device name, major, minor, stuff like that
+     * this struct will containt more data especially about host of the device
+     * and device name, major, minor, and process pid of the server that will
+     * be communicating through netlink
      */
 };
 
@@ -292,6 +292,10 @@ struct file_operations netdev_fops = {
 };
 
 static void netdev_cleanup(void) {
+    /* TODO
+     * move to separate function that will be raised by netlink_recv as it gets
+     * information from the server process that the connection is ending
+     */
     if (nddata) {
         cdev_del(&nddata->cdev);
 
@@ -314,6 +318,11 @@ static void netdev_cleanup(void) {
 
 static int __init netdev_init(void) /* Constructor */
 {
+    /* TODO
+     * this whole section will have to be moved to a separate function that will
+     * be used by netlink_recv to create devices as the server process sends
+     * information about them
+     */
     int err;
     netdev_major = 0;
 
@@ -381,11 +390,12 @@ fail:
 
 static void __exit netdev_exit(void) /* Destructor */
 {
-    // first diable the netlink module
+    /* first diable the netlink module then you can disable the device */
     netlink_exit();
-    // then you can disable the device
-    /* TODO this should be really done by netlink code since it will disable devices
-     * base on establised connections with netdev server process */
+    /* TODO 
+     * this should be really done by netlink code since it will disable devices
+     * base on establised connections with netdev server process
+     * */
     netdev_cleanup();
     return;
 }

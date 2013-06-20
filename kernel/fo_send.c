@@ -8,6 +8,8 @@
  * send_req function once receiving loop gets the response */
 int send_fo (short fl_flag, const char *data, size_t size) {
     netlink_send(fl_flag);
+    /* TODO wait queue or semafor lock waiting for a reply that will be raised
+     * by netlink_recv function once it receives it */
     return -EIO;
 }
 
