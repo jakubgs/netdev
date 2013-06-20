@@ -59,7 +59,7 @@ ssize_t netdev_fo_read (
                             char __user *data,
                             size_t c,
                             loff_t *offset)
-{ 
+{
     pk(__FUNCTION__);
     return netdev_fo_read_send_req(filp, data, c, offset);
 }
@@ -364,7 +364,7 @@ static int __init netdev_init(void) /* Constructor */
                                 devno, NULL,
                                 NETDEV_NAME "%d",
                                 MINOR(devno));
-   
+
     if (IS_ERR(nddata->device)) {
        err = PTR_ERR(nddata->device);
        printk(KERN_WARNING "[target] Error %d while trying to create %s%d\n",
@@ -375,14 +375,14 @@ static int __init netdev_init(void) /* Constructor */
     }
 
     printk(KERN_DEBUG "netdev: This is my new device: %d, %d\n",
-                        MAJOR(devno), 
+                        MAJOR(devno),
                         MINOR(devno));
 
     // TEST NETLINK
     netlink_init();
 
     return 0; /* success */
-    
+
 fail:
     netdev_cleanup();
     return err;
@@ -392,7 +392,7 @@ static void __exit netdev_exit(void) /* Destructor */
 {
     /* first diable the netlink module then you can disable the device */
     netlink_exit();
-    /* TODO 
+    /* TODO
      * this should be really done by netlink code since it will disable devices
      * base on establised connections with netdev server process
      * */
