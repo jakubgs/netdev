@@ -370,7 +370,7 @@ static int __init netdev_init(void) /* Constructor */
                         MINOR(devno));
 
     // TEST NETLINK
-    init_netlink();
+    netlink_init();
 
     return 0; /* success */
     
@@ -381,8 +381,12 @@ fail:
 
 static void __exit netdev_exit(void) /* Destructor */
 {
+    // first diable the netlink module
+    netlink_exit();
+    // then you can disable the device
+    /* TODO this should be really done by netlink code since it will disable devices
+     * base on establised connections with netdev server process */
     netdev_cleanup();
-    exit_netlink();
     return;
 }
 
