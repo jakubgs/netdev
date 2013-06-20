@@ -3,11 +3,13 @@
 #include <linux/netlink.h>
 #include <linux/skbuff.h>
 
+#include "netlink.h"
+
 #define NETLINK_USER 31
 
 struct sock *nl_sk = NULL;
 
-static void hello_nl_recv_msg(struct sk_buff *skb) {
+void hello_nl_recv_msg(struct sk_buff *skb) {
     struct nlmsghdr *nlh;
     int pid;
     struct sk_buff *skb_out;
@@ -46,13 +48,14 @@ static void hello_nl_recv_msg(struct sk_buff *skb) {
 }
 
 int init_netlink(void) {
-    printk("Entering: %s\n",__FUNCTION__);
-    // new structure for configuring netlink socket
+    // new structure for configuring netlink socket changed in linux kernel 3.8
     // http://stackoverflow.com/questions/15937395/netlink-kernel-create-is-not-working-with-latest-linux-kernel
     struct netlink_kernel_cfg nl_cfg;
     nl_cfg.groups = 0,// used for multicast
     nl_cfg.flags = 0, // TODO
     nl_cfg.input = hello_nl_recv_msg, // pointer to function that will send data
+
+    printk("Entering: %s\n",__FUNCTION__);
 
     nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, &nl_cfg);
 
