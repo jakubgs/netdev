@@ -1,7 +1,4 @@
 #include <linux/module.h>
-#include <net/sock.h>
-#include <linux/netlink.h>
-#include <linux/skbuff.h>
 
 #include "netlink.h"
 
@@ -9,13 +6,13 @@
 #define NETLINK_USER 31
 
 struct sock *nl_sk = NULL;
+int pid;
 
-void hello_nl_recv_msg(struct sk_buff *skb) {
+void netlink_recv(struct sk_buff *skb) {
     struct nlmsghdr *nlh;
-    int pid;
     struct sk_buff *skb_out;
     int msg_size;
-    char *msg = "Hello from kernel";
+    char *msg = "Device registered";
     int res;
 
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
@@ -28,12 +25,9 @@ void hello_nl_recv_msg(struct sk_buff *skb) {
 
     skb_out = nlmsg_new(msg_size, 0);
 
-    if(!skb_out)
-    {
-
+    if(!skb_out) {
         printk(KERN_ERR "Failed to allocate new skb\n");
         return;
-
     } 
     nlh = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, msg_size, 0);  
 
@@ -48,13 +42,47 @@ void hello_nl_recv_msg(struct sk_buff *skb) {
 
 }
 
+int netlink_send(short msgtype) {
+    struct nlmsghdr *nlh;
+    struct sk_buff *skb_out;
+    char *msg;
+    int msg_size;
+    int res;
+
+    if (msgtype == MSGTYPE_NETDEV_ECHO) {
+        msg = "ECHO";
+    } else {
+        msg = "DEFAULT";
+    }
+    msg_size = strlen(msg);
+
+    skb_out = nlmsg_new(msg_size, 0);
+
+    if(!skb_out) {
+        printk(KERN_ERR "Failed to allocate new skb\n");
+        return -1;
+    } 
+    nlh = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, msg_size, 0);  
+
+    NETLINK_CB(skb_out).dst_group = 0; /* not in mcast group */
+
+    strncpy(nlmsg_data(nlh) ,msg ,msg_size);
+
+    res = nlmsg_unicast(nl_sk,skb_out,pid);
+
+    if(res>0)
+        printk(KERN_INFO "Error while sending bak to user\n");
+
+    return 0;
+}
+
 int netlink_init(void) {
     // new structure for configuring netlink socket changed in linux kernel 3.8
     // http://stackoverflow.com/questions/15937395/netlink-kernel-create-is-not-working-with-latest-linux-kernel
     struct netlink_kernel_cfg nl_cfg;
     nl_cfg.groups = 0,// used for multicast
     nl_cfg.flags = 0, // TODO
-    nl_cfg.input = hello_nl_recv_msg, // pointer to function that will send data
+    nl_cfg.input = netlink_recv, // pointer to function that will send data
 
     printk("Entering: %s\n", __FUNCTION__);
 
