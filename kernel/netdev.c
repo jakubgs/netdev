@@ -1,13 +1,14 @@
 #include <linux/compiler.h>
-#include <linux/module.h>
+#include <linux/module.h>   /* for MODULE_ macros */
 #include <linux/version.h>
 #include <linux/kernel.h>
+#include <linux/sched.h>    /* access to current->comm and current->pid */
 #include <linux/types.h>
 #include <linux/kdev_t.h>
 #include <linux/device.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
-#include <linux/slab.h>
+#include <linux/slab.h>     /* kmalloc, kzalloc, kfree and so on */
 
 #include "fo.h"
 
@@ -19,7 +20,7 @@ MODULE_DESCRIPTION("This is my first kernel driver. Please don't use it...");
 #define NETDEV_NAME "netdev"
 
 /* for now we use only one, but in future we will use one for every device */
-struct netdev_dev {
+struct netdev_data {
     struct cdev cdev;
     struct device *device;
     /* TODO
@@ -31,21 +32,24 @@ struct netdev_dev {
 
 static unsigned int netdev_major; /* user dynamic allocation */
 static int dev_count = 1;
-static struct netdev_dev *dev;
+static struct netdev_data *nddata;
 static struct class *netdev_class;
 static dev_t devno;
 
 static void pk(const char * name) {
-    printk(KERN_INFO "netdev: File Operation called - %s\n", name);
+    printk(KERN_INFO "netdev: File Operation called by \"%s\", PID: %d - %s\n",
+            current->comm,
+            current->pid,
+            name);
 }
 
 loff_t  netdev_fo_llseek (
                             struct file *filp,
                             loff_t offset,
-                            int c)
+                            int whence)
 {
     pk("llseek");
-    return netdev_fo_llseek_send(filp, offset, c);
+    return netdev_fo_llseek_send_req(filp, offset, whence);
 }
 ssize_t netdev_fo_read (
                             struct file *filp,
@@ -54,7 +58,7 @@ ssize_t netdev_fo_read (
                             loff_t *offset)
 { 
     pk("read");
-    return netdev_fo_read_send(filp, data, c, offset);
+    return netdev_fo_read_send_req(filp, data, c, offset);
 }
 ssize_t netdev_fo_write (
                             struct file *filp,
@@ -63,7 +67,7 @@ ssize_t netdev_fo_write (
                             loff_t *offset)
 {
     pk("write");
-    return netdev_fo_write_send(filp, data, c, offset);
+    return netdev_fo_write_send_req(filp, data, c, offset);
 }
 ssize_t netdev_fo_aio_read (
                             struct kiocb *a,
@@ -72,7 +76,7 @@ ssize_t netdev_fo_aio_read (
                             loff_t offset)
 {
     pk("aio_read");
-    return netdev_fo_aio_read_send(a, b ,c, offset);
+    return netdev_fo_aio_read_send_req(a, b ,c, offset);
 }
 ssize_t netdev_fo_aio_write (
                             struct kiocb *a,
@@ -81,7 +85,7 @@ ssize_t netdev_fo_aio_write (
                             loff_t offset)
 {
     pk("aio_write");
-    return netdev_fo_aio_write_send(a, b, c, offset);
+    return netdev_fo_aio_write_send_req(a, b, c, offset);
 }
 int     netdev_fo_readdir (
                             struct file *filp,
@@ -89,14 +93,14 @@ int     netdev_fo_readdir (
                             filldir_t c)
 {
     pk("readdir");
-    return netdev_fo_readdir_send(filp, b, c);
+    return netdev_fo_readdir_send_req(filp, b, c);
 }
 unsigned int netdev_fo_poll (
                             struct file *filp,
-                            struct poll_table_struct *b)
+                            struct poll_table_struct *wait)
 {
     pk("poll");
-    return netdev_fo_poll_send(filp, b);
+    return netdev_fo_poll_send_req(filp, wait);
 }
 long    netdev_fo_unlocked_ioctl (
                             struct file *filp,
@@ -104,7 +108,7 @@ long    netdev_fo_unlocked_ioctl (
                             unsigned long c)
 {
     pk("unlocked_ioctl");
-    return netdev_fo_unlocked_ioctl_send(filp, b, c);
+    return netdev_fo_unlocked_ioctl_send_req(filp, b, c);
 }
 long    netdev_fo_compat_ioctl (
                             struct file *filp,
@@ -112,35 +116,35 @@ long    netdev_fo_compat_ioctl (
                             unsigned long c)
 {
     pk("compat_ioctl");
-    return netdev_fo_compat_ioctl_send(filp, b, c);
+    return netdev_fo_compat_ioctl_send_req(filp, b, c);
 }
 int     netdev_fo_mmap (
                             struct file *filp,
                             struct vm_area_struct *b)
 {
     pk("mmap");
-    return netdev_fo_mmap_send(filp, b);
+    return netdev_fo_mmap_send_req(filp, b);
 }
 int     netdev_fo_open (
                             struct inode *inode,
                             struct file *filp)
 {
     pk("open");
-    return netdev_fo_open_send(inode, filp);
+    return netdev_fo_open_send_req(inode, filp);
 }
 int     netdev_fo_flush (
                             struct file *filp,
                             fl_owner_t id)
 {
     pk("flush");
-    return netdev_fo_flush_send(filp, id);
+    return netdev_fo_flush_send_req(filp, id);
 }
 int     netdev_fo_release (
                             struct inode *a,
                             struct file *b)
 {
     pk("release");
-    return netdev_fo_release_send(a, b);
+    return netdev_fo_release_send_req(a, b);
 }
 int     netdev_fo_fsync (
                             struct file *filp,
@@ -149,14 +153,14 @@ int     netdev_fo_fsync (
                             int d)
 {
     pk("fsync");
-    return netdev_fo_fsync_send(filp, b, c, d);
+    return netdev_fo_fsync_send_req(filp, b, c, d);
 }
 int     netdev_fo_aio_fsync (
                             struct kiocb *a,
                             int b)
 {
     pk("aio_fsync");
-    return netdev_fo_aio_fsync_send(a, b);
+    return netdev_fo_aio_fsync_send_req(a, b);
 }
 int     netdev_fo_fasync (
                             int a,
@@ -164,7 +168,7 @@ int     netdev_fo_fasync (
                             int c)
 {
     pk("fasync");
-    return netdev_fo_fasync_send(a, b, c);
+    return netdev_fo_fasync_send_req(a, b, c);
 }
 int     netdev_fo_lock (
                             struct file *filp,
@@ -172,7 +176,7 @@ int     netdev_fo_lock (
                             struct file_lock *c)
 {
     pk("lock");
-    return netdev_fo_lock_send(filp, b, c);
+    return netdev_fo_lock_send_req(filp, b, c);
 }
 ssize_t netdev_fo_sendpage (
                             struct file *filp,
@@ -183,7 +187,7 @@ ssize_t netdev_fo_sendpage (
                             int f)
 {
     pk("sendpage");
-    return netdev_fo_sendpage_send(filp, b, c, d, offset, f);
+    return netdev_fo_sendpage_send_req(filp, b, c, d, offset, f);
 }
 unsigned long netdev_fo_get_unmapped_area(
                             struct file *filp,
@@ -193,13 +197,13 @@ unsigned long netdev_fo_get_unmapped_area(
                             unsigned long e)
 {
     pk("get_unmapped_are");
-    return netdev_fo_get_unmapped_area_send(filp, b, c, d, e);
+    return netdev_fo_get_unmapped_area_send_req(filp, b, c, d, e);
 }
 int     netdev_fo_check_flags(
                             int a)
 {
     pk("check_flag");
-    return netdev_fo_check_flags_send(a);
+    return netdev_fo_check_flags_send_req(a);
 }
 int     netdev_fo_flock (
                             struct file *filp,
@@ -207,7 +211,7 @@ int     netdev_fo_flock (
                             struct file_lock *c)
 {
     pk("flock");
-    return netdev_fo_flock_send(filp, b, c);
+    return netdev_fo_flock_send_req(filp, b, c);
 }
 ssize_t netdev_fo_splice_write(
                             struct pipe_inode_info *a,
@@ -217,7 +221,7 @@ ssize_t netdev_fo_splice_write(
                             unsigned int e)
 {
     pk("splice_writ");
-    return netdev_fo_splice_write_send(a, filp, offset, d, e);
+    return netdev_fo_splice_write_send_req(a, filp, offset, d, e);
 }
 ssize_t netdev_fo_splice_read(
                             struct file *filp,
@@ -227,7 +231,7 @@ ssize_t netdev_fo_splice_read(
                             unsigned int e)
 {
     pk("splice_rea");
-    return netdev_fo_splice_read_send(filp, offset, c, d, e);
+    return netdev_fo_splice_read_send_req(filp, offset, c, d, e);
 }
 int     netdev_fo_setlease(
                             struct file *filp,
@@ -235,7 +239,7 @@ int     netdev_fo_setlease(
                             struct file_lock **c)
 {
     pk("setleas");
-    return netdev_fo_setlease_send(filp, b, c);
+    return netdev_fo_setlease_send_req(filp, b, c);
 }
 long    netdev_fo_fallocate(
                             struct file *filp,
@@ -244,49 +248,49 @@ long    netdev_fo_fallocate(
                             loff_t len)
 {
     pk("fallocat");
-    return netdev_fo_fallocate_send(filp, b, offset, len);
+    return netdev_fo_fallocate_send_req(filp, b, offset, len);
 }
 int netdev_fo_show_fdinfo(
                             struct seq_file *a,
                             struct file *filp)
 {
     pk("show_fdinf");
-    return netdev_fo_show_fdinfo_send(a, filp);
+    return netdev_fo_show_fdinfo_send_req(a, filp);
 }
 
 struct file_operations netdev_fops = {
-    .owner              = THIS_MODULE,
-    .llseek             = netdev_fo_llseek,
-    .read               = netdev_fo_read,
-    .write              = netdev_fo_write,
-    .aio_read           = netdev_fo_aio_read,
-    .aio_write          = netdev_fo_aio_write,
-    .readdir            = netdev_fo_readdir,
-    .poll               = netdev_fo_poll,
-    .unlocked_ioctl     = netdev_fo_unlocked_ioctl,
-    .compat_ioctl       = netdev_fo_compat_ioctl,
-    .mmap               = netdev_fo_mmap,
-    .open               = netdev_fo_open,
-    .flush              = netdev_fo_flush,
-    .release            = netdev_fo_release,
-    .fsync              = netdev_fo_fsync,
-    .aio_fsync          = netdev_fo_aio_fsync,
-    .fasync             = netdev_fo_fasync,
-    .lock               = netdev_fo_lock,
-    .sendpage           = netdev_fo_sendpage,
-    .get_unmapped_area  = netdev_fo_get_unmapped_area,
-    .check_flags        = netdev_fo_check_flags,
-    .flock              = netdev_fo_flock,
-    .splice_write       = netdev_fo_splice_write,
-    .splice_read        = netdev_fo_splice_read,
-    .setlease           = netdev_fo_setlease,
-    .fallocate          = netdev_fo_fallocate,
-    .show_fdinfo        = netdev_fo_show_fdinfo
+    .owner             = THIS_MODULE,
+    .llseek            = netdev_fo_llseek,
+    .read              = netdev_fo_read,
+    .write             = netdev_fo_write,
+    .aio_read          = netdev_fo_aio_read,
+    .aio_write         = netdev_fo_aio_write,
+    .readdir           = netdev_fo_readdir,
+    .poll              = netdev_fo_poll,
+    .unlocked_ioctl    = netdev_fo_unlocked_ioctl,
+    .compat_ioctl      = netdev_fo_compat_ioctl,
+    .mmap              = netdev_fo_mmap,
+    .open              = netdev_fo_open,
+    .flush             = netdev_fo_flush,
+    .release           = netdev_fo_release,
+    .fsync             = netdev_fo_fsync,
+    .aio_fsync         = netdev_fo_aio_fsync,
+    .fasync            = netdev_fo_fasync,
+    .lock              = netdev_fo_lock,
+    .sendpage          = netdev_fo_sendpage,
+    .get_unmapped_area = netdev_fo_get_unmapped_area,
+    .check_flags       = netdev_fo_check_flags,
+    .flock             = netdev_fo_flock,
+    .splice_write      = netdev_fo_splice_write,
+    .splice_read       = netdev_fo_splice_read,
+    .setlease          = netdev_fo_setlease,
+    .fallocate         = netdev_fo_fallocate,
+    .show_fdinfo       = netdev_fo_show_fdinfo
 };
 
 static void netdev_cleanup(void) {
-    if (dev) {
-        cdev_del(&dev->cdev);
+    if (nddata) {
+        cdev_del(&nddata->cdev);
 
         device_destroy(netdev_class, devno);
     }
@@ -298,11 +302,15 @@ static void netdev_cleanup(void) {
     unregister_chrdev_region(devno, dev_count);
 
     /* kfree can take null as argument, no test needed */
-    kfree(dev);
+    kfree(nddata);
 
     printk(KERN_DEBUG "netdev: cleaned up after this device\n");
 
     return;
+}
+
+int netlink_connect() {
+    return 0;
 }
 
 static int __init netdev_init(void) /* Constructor */
@@ -310,7 +318,10 @@ static int __init netdev_init(void) /* Constructor */
     int err;
     netdev_major = 0;
 
-    dev = (struct netdev_dev *) kzalloc(sizeof(struct netdev_dev), GFP_KERNEL);
+    /* GFP_KERNEL means this function can be blocked,
+     * so it can't be part of an atomic operation.
+     * For that GFP_ATOMIC would have to be used. */
+    nddata = (struct netdev_data *) kzalloc(sizeof(struct netdev_data), GFP_KERNEL);
 
     /* get a range of minor numbers (starting with 0) to work with */
     err = alloc_chrdev_region(&devno, netdev_major, dev_count, NETDEV_NAME);
@@ -328,12 +339,12 @@ static int __init netdev_init(void) /* Constructor */
         goto fail;
     }
 
-    cdev_init(&dev->cdev, &netdev_fops);
+    cdev_init(&nddata->cdev, &netdev_fops);
 
-    dev->cdev.owner = THIS_MODULE;
-    dev->cdev.ops = &netdev_fops;
+    nddata->cdev.owner = THIS_MODULE;
+    nddata->cdev.ops   = &netdev_fops;
 
-    err = cdev_add(&dev->cdev, devno, 1);
+    err = cdev_add(&nddata->cdev, devno, 1);
 
     /* Unlikely but might fail */
     if (unlikely(err)) {
@@ -341,13 +352,13 @@ static int __init netdev_init(void) /* Constructor */
         goto fail;
     }
 
-    dev->device = device_create(netdev_class, NULL,
+    nddata->device = device_create(netdev_class, NULL,
                                 devno, NULL,
                                 NETDEV_NAME "%d",
                                 MINOR(devno));
    
-    if (IS_ERR(dev->device)) {
-       err = PTR_ERR(dev->device);
+    if (IS_ERR(nddata->device)) {
+       err = PTR_ERR(nddata->device);
        printk(KERN_WARNING "[target] Error %d while trying to create %s%d\n",
                             err,
                             NETDEV_NAME,
