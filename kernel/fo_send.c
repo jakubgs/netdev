@@ -1,4 +1,5 @@
 #include "fo.h"
+#include "netlink.h"
 
 /* used for sending file operations converted by send_req functions to 
  * a buffer of certian size to the loop sending operations whtough netlink
@@ -6,6 +7,7 @@
 /* TODO might require a struct that will also hold the wait queue to unblock waiting
  * send_req function once receiving loop gets the response */
 int send_fo (short fl_flag, const char *data, size_t size) {
+    netlink_send(fl_flag);
     return -EIO;
 }
 
@@ -41,6 +43,7 @@ int netdev_fo_mmap_send_req (struct file *filp, struct vm_area_struct *b) {
     return -EIO;
 }
 int netdev_fo_open_send_req (struct inode *inode, struct file *filp) {
+    send_fo(MSGTYPE_FO_OPEN, NULL, 0); // Test sending operations
     return 0; /* return success to see other operations */
 }
 int netdev_fo_flush_send_req (struct file *filp, fl_owner_t id) {

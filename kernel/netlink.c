@@ -11,6 +11,7 @@ int pid;
 void netlink_recv(struct sk_buff *skb) {
     struct nlmsghdr *nlh;
     struct sk_buff *skb_out;
+    short msgtype;
     int msg_size;
     char *msg = "Device registered";
     int res;
@@ -22,6 +23,7 @@ void netlink_recv(struct sk_buff *skb) {
     nlh = (struct nlmsghdr*)skb->data;
     printk(KERN_INFO "Netlink received msg payload: %s\n", (char*)nlmsg_data(nlh));
     pid = nlh->nlmsg_pid; /*pid of sending process */
+    msgtype = nlh->nlmsg_type;
 
     skb_out = nlmsg_new(msg_size, 0);
 
