@@ -8,9 +8,7 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 #include <linux/slab.h>     /* kmalloc, kzalloc, kfree and so on */
-#include <linux/netlink.h>  /* for netlink sockets */
 
-#include "netdev_main.h"
 #include "fo.h"
 #include "netlink.h"
 

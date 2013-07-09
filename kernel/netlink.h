@@ -2,7 +2,7 @@
 #define _NETLINK_H
 
 #include <net/sock.h>
-#include <linux/netlink.h>
+#include <linux/netlink.h>  /* for netlink sockets */
 #include <linux/skbuff.h>
 
 /* define type of message for netlink driver management,
