@@ -3,8 +3,8 @@
 #include "netlink.h"
 #include "msgtype.h"
 
-// defines the protocol used, we want our own protocol
-#define NETLINK_USER 31
+/* defines the protocol used, we want our own protocol */
+#define NETLINK_USER 80085
 
 struct sock *nl_sk = NULL;
 /* TODO this will have to be part of a struct that will contain information
@@ -93,7 +93,7 @@ int netlink_init(void) {
     struct netlink_kernel_cfg nl_cfg;
     nl_cfg.groups = 0,// used for multicast
     nl_cfg.flags = 0, // TODO
-    nl_cfg.input = netlink_recv, // pointer to function that will send data
+    nl_cfg.input = netlink_recv, // pointer to function that will receive data
 
     printk("Entering: %s\n", __FUNCTION__);
 
