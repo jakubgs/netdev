@@ -1,7 +1,8 @@
 # Makefile – makefile of our first driver
 TARGET 		:= netdev
 WARN   		:= -Wall -Wstrict-prototypes -Wmissing-prototypes
-ccflags-y 	:= -O ${WARN}
+INCLUDE 	:= -I$(src)/../include/ -I$(src)
+ccflags-y 	:= -O ${WARN} ${INCLUDE}
 
 # if KERNELRELEASE is defined, we've been invoked from the
 # kernel build system and can use its language.

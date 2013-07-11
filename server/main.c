@@ -4,6 +4,7 @@
 #include <stdio.h>  /* printf */
 #include <sys/socket.h>
 #include <linux/netlink.h>
+#include "msgtype.h"
 
 // defines the protocol used, we want our own protocol
 #define NETLINK_USER 31
@@ -25,6 +26,8 @@ int main() {
     src_addr.nl_family = AF_NETLINK;
     src_addr.nl_pid = getpid(); /* self pid */
 
+    /* src_addr has to be casted to (struct sockaddr*) for compatibility with
+     * IPv4 and IPv6 structures, sockaddr_in and sockaddr_in6. */
     bind(sock_fd, (struct sockaddr*)&src_addr, sizeof(src_addr));
 
     memset(&dest_addr, 0, sizeof(dest_addr));
@@ -38,7 +41,7 @@ int main() {
     nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
     nlh->nlmsg_pid = getpid();
     nlh->nlmsg_flags = 0;
-    nlh->nlmsg_type = NETDEV_REG;
+    nlh->nlmsg_type = MSGTYPE_NETDEV_REGISTER;
 
     strcpy(NLMSG_DATA(nlh), "Register device for sharing");
 
