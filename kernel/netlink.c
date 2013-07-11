@@ -1,6 +1,7 @@
 #include <linux/module.h>
 
 #include "netlink.h"
+#include "msgtype.h"
 
 // defines the protocol used, we want our own protocol
 #define NETLINK_USER 31
