@@ -1,6 +1,9 @@
 #ifndef _MSGTYPE_H
 #define _MSGTYPE_H
 
+/* defines the protocol used, we want our own protocol */
+#define NETLINK_PROTOCOL 31
+
 /* define type of message for netlink driver management,
  * will be used in nlmsghdr->nlmsg_type */
 #define MSGTYPE_NETDEV_ECHO         0

@@ -5,10 +5,7 @@
 #include <sys/socket.h>
 #include <linux/netlink.h>
 
-#include "msgtype.h"
-
-/* defines the protocol used, we want our own protocol */
-#define NETLINK_USER 31
+#include "protocol.h"
 
 #define MAX_PAYLOAD 1024 /* maximum payload size*/
 
@@ -18,7 +15,7 @@ int netlink_setup(int sock_fd) {
 
     /* create socket for netlink
      * int socket(int domain, int type, int protocol); */
-    sock_fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_USER);
+    sock_fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_PROTOCOL);
 
     /* check if socket was actually created */
     if ( sock_fd < 0 )
