@@ -102,7 +102,7 @@ struct s_fo_get_unmapped_area{
     unsigned long d;
     unsigned long e;
 };
-struct s_fo_check_flags{
+struct s_fo_check_flags {
     int a;
 };
 struct s_fo_flock {
@@ -110,32 +110,32 @@ struct s_fo_flock {
     int b;
     struct file_lock *c;
 };
-struct s_fo_splice_write{
+struct s_fo_splice_write {
     struct pipe_inode_info *a;
     struct file *filp;
     loff_t *offset;
     size_t d;
     unsigned int e;
 };
-struct s_fo_splice_read{
+struct s_fo_splice_read {
     struct file *filp;
     loff_t *b;
     struct pipe_inode_info *c;
     size_t d;
     unsigned int e;
 };
-struct s_fo_setlease{
+struct s_fo_setlease {
     long b;
     struct file *filp;
     struct file_lock **c;
 };
-struct s_fo_fallocate{
+struct s_fo_fallocate {
     struct file *filp;
     int b;
     loff_t offset;
     loff_t len;
 };
-struct s_fo_show_fdinfo{
+struct s_fo_show_fdinfo {
     struct seq_file *a;
     struct file *filp;
 };
