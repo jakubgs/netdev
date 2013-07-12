@@ -8,17 +8,14 @@
 #include "msgtype.h"
 
 /* defines the protocol used, we want our own protocol */
-#define NETLINK_USER 80085
+#define NETLINK_USER 31
 
 #define MAX_PAYLOAD 1024 /* maximum payload size*/
 
-struct sockaddr_nl src_addr, dest_addr;
-struct nlmsghdr *nlh = NULL;
-struct iovec iov;
-struct msghdr msg;
-int sock_fd;
+int netlink_setup(int sock_fd) {
+    struct sockaddr_nl src_addr;
+    int rvalue = 0;
 
-int main() {
     /* create socket for netlink
      * int socket(int domain, int type, int protocol); */
     sock_fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_USER);
@@ -35,7 +32,25 @@ int main() {
 
     /* src_addr has to be casted to (struct sockaddr*) for compatibility with
      * IPv4 and IPv6 structures, sockaddr_in and sockaddr_in6. */
-    bind(sock_fd, (struct sockaddr*)&src_addr, sizeof(src_addr));
+    rvalue = bind(sock_fd, (struct sockaddr*)&src_addr, sizeof(src_addr));
+
+    if ( rvalue < 0 ) {
+        return -1;
+    }
+
+    return 1;
+}
+
+int main() {
+    struct sockaddr_nl dest_addr;
+    struct nlmsghdr *nlh = NULL;
+    struct iovec iov;
+    struct msghdr msg;
+    int sock_fd;
+
+    /* setup socket */
+    if ( netlink_setup(sock_fd) < 0 )
+        return -1;
 
     /* zerou out struct before using it */
     memset(&dest_addr, 0, sizeof(dest_addr));
