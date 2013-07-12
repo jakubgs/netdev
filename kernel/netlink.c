@@ -1,10 +1,13 @@
 #include <linux/module.h>
+#include <linux/netlink.h>  /* for netlink sockets */
+#include <linux/skbuff.h>
+#include <net/sock.h>
 
 #include "netlink.h"
 #include "msgtype.h"
 
 /* defines the protocol used, we want our own protocol */
-#define NETLINK_USER 80085
+#define NETLINK_USER 31
 
 struct sock *nl_sk = NULL;
 /* TODO this will have to be part of a struct that will contain information
