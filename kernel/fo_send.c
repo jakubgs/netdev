@@ -1,5 +1,5 @@
 #include "fo.h"
-#include "msgtype.h"
+#include "protocol.h"
 #include "netlink.h"
 
 /* used for sending file operations converted by send_req functions to 
