@@ -11,20 +11,43 @@ struct sock *p_nl_sk = NULL;
  * process */
 int pid = 0;
 
+int netlink_echo(int pid, char *p_msg) {
+    struct nlmsghdr *p_nlh;
+    struct sk_buff *p_skb_out;
+    int msg_size = strlen(p_msg);
+    int rvalue;
+
+    /* allocate memory for sk_buff, no flags */
+    p_skb_out = nlmsg_new(msg_size, 0);
+
+    if(!p_skb_out) {
+        printk(KERN_ERR "netlink: Failed to allocate new skb\n");
+        return -1;
+    } 
+    p_nlh = nlmsg_put(p_skb_out, 0, 0, NLMSG_DONE, msg_size, 0);  
+
+    NETLINK_CB(p_skb_out).dst_group = 0; /* not in mcast group */
+
+    strncpy(nlmsg_data(p_nlh) ,p_msg ,msg_size);
+
+    rvalue = nlmsg_unicast(p_nl_sk,p_skb_out,pid);
+
+    if(rvalue>0) {
+        printk(KERN_INFO "netlink: Error while sending bak to user\n");
+        return -1;
+    }
+
+    return 1; /* success */
+}
+
 /* TODO this will have to be modified to receive responses from server process,
  * find the appropriate wait queue and release it once the reply is assigned
  * to appropriate variables in struct describing one pending file operaion */
 void netlink_recv(struct sk_buff *skb) {
     struct nlmsghdr *p_nlh;
-    struct sk_buff *p_skb_out;
     short msgtype;
-    int msg_size;
-    char *p_msg = "Device registered";
-    int rvalue;
 
     printk(KERN_INFO "netlink: Entering: %s\n", __FUNCTION__);
-
-    msg_size = strlen(p_msg);
 
     p_nlh = (struct nlmsghdr*)skb->data;
     printk(KERN_INFO "netlink: received msg payload: %s\n", (char*)nlmsg_data(p_nlh));
@@ -38,23 +61,27 @@ void netlink_recv(struct sk_buff *skb) {
         return;
     }
 
-    p_skb_out = nlmsg_new(msg_size, 0);
-
-    if(!p_skb_out) {
-        printk(KERN_ERR "netlink: Failed to allocate new skb\n");
-        return;
-    } 
-    p_nlh = nlmsg_put(p_skb_out, 0, 0, NLMSG_DONE, msg_size, 0);  
-
-    NETLINK_CB(p_skb_out).dst_group = 0; /* not in mcast group */
-
-    strncpy(nlmsg_data(p_nlh) ,p_msg ,msg_size);
-
-    rvalue = nlmsg_unicast(p_nl_sk,p_skb_out,pid);
-
-    if(rvalue>0)
-        printk(KERN_INFO "netlink: Error while sending bak to user\n");
-
+    /* if msgtype is a netdev control message */
+    if ( msgtype >= MSGTYPE_CONTROL_START && msgtype < MSGTYPE_CONTROL_END ) {
+        switch (msgtype) {  /* handle the request */
+            case MSGTYPE_CONTROL_ECHO:
+                netlink_echo(pid, (char*)nlmsg_data(p_nlh));
+                break;
+            case MSGTYPE_CONTROL_REGISTER:
+                break;
+            case MSGTYPE_CONTROL_UNREGISTER:
+                break;
+            default:
+                printk(KERN_WARNING "netlink: unknown control message type: %d\n", msgtype);
+                break;
+        }
+    /* if it's not a control message it has to be a file operation */
+    } else if ( msgtype > MSGTYPE_FO_START && msgtype < MSGTYPE_FO_END ) {
+        printk(KERN_DEBUG "netlink: file opration message type: %d\n", msgtype);
+        /* TODO reply to a file operation, queue it for the fo thread */
+    } else { /* otherwise we don't know what this message type is */
+        printk(KERN_DEBUG "netlink: unknown message type: %d\n", msgtype);
+    }
 }
 
 /* TODO should receive not only msgtype but also a buffer with properly 
@@ -70,7 +97,7 @@ int netlink_send(short msgtype) {
         return -1;
     }
 
-    if (msgtype == MSGTYPE_NETDEV_ECHO) {
+    if (msgtype == MSGTYPE_CONTROL_ECHO) {
         p_msg = "ECHO";
     } else {
         p_msg = "DEFAULT";
