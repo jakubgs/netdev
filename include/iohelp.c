@@ -1,5 +1,8 @@
 #include "iohelp.h"
 
+#include <stdio.h>  /* perror */
+#include <unistd.h> /* read,write */
+
 static ssize_t
 my_read(int fd, char *ptr)
 {
