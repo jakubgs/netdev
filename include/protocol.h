@@ -4,12 +4,16 @@
 /* defines the protocol used, we want our own protocol */
 #define NETLINK_PROTOCOL 31
 
-/* define type of message for netlink driver management,
+/* define type of message for netlink driver control,
  * will be used in nlmsghdr->nlmsg_type */
-#define MSGTYPE_NETDEV_ECHO         0
-#define MSGTYPE_NETDEV_REGISTER     1
-#define MSGTYPE_NETDEV_UNREGISTER   2
-#define MSGTYPE_NETDEV_DRIVER_STOP  3
+#define MSGTYPE_CONTROL_ECHO         1
+#define MSGTYPE_CONTROL_REGISTER     2
+#define MSGTYPE_CONTROL_UNREGISTER   3
+#define MSGTYPE_CONTROL_DRIVER_STOP  4
+
+/* limit of control messsages */
+#define MSGTYPE_CONTROL_START       0
+#define MSGTYPE_CONTROL_END         100
 
 /* Definitions used to distinguis between file operation structures
  * that contain all the functiona arguments, best used with short or __u16
@@ -40,5 +44,8 @@
 #define MSGTYPE_FO_SETLEASE          124
 #define MSGTYPE_FO_FALLOCATE         125
 #define MSGTYPE_FO_SHOW_FDINF        126
+
+#define MSGTYPE_FO_START             100
+#define MSGTYPE_FO_END               127
 
 #endif /* _MSGTYPE_H */
