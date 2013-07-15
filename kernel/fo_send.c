@@ -19,6 +19,7 @@ loff_t netdev_fo_llseek_send_req (struct file *flip, loff_t offset, int whence) 
     return -EIO;
 }
 ssize_t netdev_fo_read_send_req (struct file *flip, char __user *data, size_t c, loff_t *offset) {
+    send_fo(MSGTYPE_FO_READ, NULL, 0); // Test sending operations
     return -EIO;
 }
 ssize_t netdev_fo_write_send_req (struct file *flip, const char __user *data, size_t c, loff_t *offset) {
@@ -50,9 +51,11 @@ int netdev_fo_open_send_req (struct inode *inode, struct file *filp) {
     return 0; /* return success to see other operations */
 }
 int netdev_fo_flush_send_req (struct file *filp, fl_owner_t id) {
+    send_fo(MSGTYPE_FO_FLUSH, NULL, 0); // Test sending operations
     return 0; /* does nothing, can return success */
 }
 int netdev_fo_release_send_req (struct inode *a, struct file *filp) {
+    send_fo(MSGTYPE_FO_RELEASE, NULL, 0); // Test sending operations
     return 0; /* return success, no harm done */
 }
 int netdev_fo_fsync_send_req (struct file *filp, loff_t b, loff_t offset, int d) {
