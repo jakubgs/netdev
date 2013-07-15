@@ -90,7 +90,10 @@ int main() {
         if (rvalue <= 0) {
             break;
         }
-        printf("Received message payload: %s\n", (char*)NLMSG_DATA(p_nlh));
+        printf("Received message from pid: %d\n\tmsgtype:\t%d\n\tpayload:\t%s\n",
+                                                    p_nlh->nlmsg_pid,
+                                                    p_nlh->nlmsg_type,
+                                                    (char*)NLMSG_DATA(p_nlh));
     }
 
     close(sock_fd);
