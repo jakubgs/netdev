@@ -67,9 +67,9 @@ int main() {
     p_nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
     p_nlh->nlmsg_pid = getpid();
     p_nlh->nlmsg_flags = 0;
-    p_nlh->nlmsg_type = MSGTYPE_NETDEV_REGISTER;
+    p_nlh->nlmsg_type = MSGTYPE_CONTROL_ECHO;
 
-    strcpy(NLMSG_DATA(p_nlh), "Register device for sharing");
+    strcpy(NLMSG_DATA(p_nlh), "test echo message");
 
     iov.iov_base = (void *)p_nlh;
     iov.iov_len = p_nlh->nlmsg_len;
