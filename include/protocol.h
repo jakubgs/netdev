@@ -1,5 +1,10 @@
-#ifndef _MSGTYPE_H
-#define _MSGTYPE_H
+#ifndef _PROTOCOL_H
+#define _PROTOCOL_H
+
+/* defines the default netlink server port */
+#define NETDEV_SERVER_PORT 9999
+
+#define NETDEV_MAXLINE 1024
 
 /* defines the protocol used, we want our own protocol */
 #define NETLINK_PROTOCOL 31
@@ -48,4 +53,4 @@
 #define MSGTYPE_FO_START             100
 #define MSGTYPE_FO_END               127
 
-#endif /* _MSGTYPE_H */
+#endif /* _PROTOCOL_H */
