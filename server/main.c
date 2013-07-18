@@ -66,6 +66,68 @@ int netdev_server(int connfd) {
     return 1;
 }
 
+void netdev_client(char *name, char *address) {
+    /* TODO start a new connection with a netdev server and register a device
+     * with the netdev kernel driver */
+    struct sockaddr_nl dest_addr;
+    struct nlmsghdr *p_nlh = NULL;
+    struct iovec iov;
+    struct msghdr *p_msg; // needs to be global or a pointer
+    int sock_fd = -1;
+    int rvalue = 0;
+
+    printf("Netlink protocol: %d\n", NETLINK_PROTOCOL);
+    sock_fd = netlink_setup();
+    printf("sock_fd: %d\n", sock_fd);
+    if ( sock_fd < 0 ) {
+        return;
+    }
+
+    /* zero out struct before using it */
+    memset(&dest_addr, 0, sizeof(dest_addr));
+
+    dest_addr.nl_family = AF_NETLINK;
+    dest_addr.nl_pid = 0; /* For Linux Kernel */
+    dest_addr.nl_groups = 0; /* unicast */
+
+    p_nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+    memset(p_nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
+    p_nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
+    p_nlh->nlmsg_pid = getpid();
+    p_nlh->nlmsg_flags = 0;
+    p_nlh->nlmsg_type = MSGTYPE_CONTROL_ECHO;
+
+    strcpy(NLMSG_DATA(p_nlh), "test echo message");
+
+    iov.iov_base = (void *)p_nlh;
+    iov.iov_len = p_nlh->nlmsg_len;
+    p_msg = (struct msghdr *)malloc(sizeof(struct msghdr));
+    p_msg->msg_name = (void *)&dest_addr;
+    p_msg->msg_namelen = sizeof(dest_addr);
+    p_msg->msg_iov = &iov;
+    p_msg->msg_iovlen = 1;
+
+    printf("Sending message to kernel\n");
+    sendmsg(sock_fd,p_msg,0);
+    printf("Waiting for message from kernel\n");
+
+    /* Read message from kernel */
+    for ( ; ; ) {
+        rvalue = recvmsg(sock_fd, p_msg, 0);
+        printf("rvalue: %d\n", rvalue);
+        if (rvalue <= 0) {
+            break;
+        }
+        printf("Received message from pid: %d\
+                \n\ttype:\t%d\n\tpayload:\t%s\n",
+                p_nlh->nlmsg_pid,
+                p_nlh->nlmsg_type,
+                (char*)NLMSG_DATA(p_nlh));
+    }
+
+    close(sock_fd);
+}
+
 int netdev_listener() {
     int listenfd, connfd;
     int rvalue;
@@ -130,68 +192,6 @@ int netdev_listener() {
         /* decreas the counter for new connection */
         close(connfd);
     }
-}
-
-void netdev_client(char *name, char *address) {
-    /* TODO start a new connection with a netdev server and register a device
-     * with the netdev kernel driver */
-    struct sockaddr_nl dest_addr;
-    struct nlmsghdr *p_nlh = NULL;
-    struct iovec iov;
-    struct msghdr *p_msg; // needs to be global or a pointer
-    int sock_fd = -1;
-    int rvalue = 0;
-
-    printf("Netlink protocol: %d\n", NETLINK_PROTOCOL);
-    sock_fd = netlink_setup();
-    printf("sock_fd: %d\n", sock_fd);
-    if ( sock_fd < 0 ) {
-        return;
-    }
-
-    /* zero out struct before using it */
-    memset(&dest_addr, 0, sizeof(dest_addr));
-
-    dest_addr.nl_family = AF_NETLINK;
-    dest_addr.nl_pid = 0; /* For Linux Kernel */
-    dest_addr.nl_groups = 0; /* unicast */
-
-    p_nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
-    memset(p_nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
-    p_nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
-    p_nlh->nlmsg_pid = getpid();
-    p_nlh->nlmsg_flags = 0;
-    p_nlh->nlmsg_type = MSGTYPE_CONTROL_ECHO;
-
-    strcpy(NLMSG_DATA(p_nlh), "test echo message");
-
-    iov.iov_base = (void *)p_nlh;
-    iov.iov_len = p_nlh->nlmsg_len;
-    p_msg = (struct msghdr *)malloc(sizeof(struct msghdr));
-    p_msg->msg_name = (void *)&dest_addr;
-    p_msg->msg_namelen = sizeof(dest_addr);
-    p_msg->msg_iov = &iov;
-    p_msg->msg_iovlen = 1;
-
-    printf("Sending message to kernel\n");
-    sendmsg(sock_fd,p_msg,0);
-    printf("Waiting for message from kernel\n");
-
-    /* Read message from kernel */
-    for ( ; ; ) {
-        rvalue = recvmsg(sock_fd, p_msg, 0);
-        printf("rvalue: %d\n", rvalue);
-        if (rvalue <= 0) {
-            break;
-        }
-        printf("Received message from pid: %d\
-                \n\ttype:\t%d\n\tpayload:\t%s\n",
-                p_nlh->nlmsg_pid,
-                p_nlh->nlmsg_type,
-                (char*)NLMSG_DATA(p_nlh));
-    }
-
-    close(sock_fd);
 }
 
 int main(int argc, char *argv[]) {
