@@ -17,10 +17,15 @@ MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Jakub Sokołowski <panswiata_at_gmail_com>");
 MODULE_DESCRIPTION("This is my first kernel driver. Please don't use it...");
 
+/* this will be provided by the name variable in netdev_data struct */
 #define NETDEV_NAME "netdev"
 
 /* for now we use only one, but in future we will use one for every device */
+/* TODO this structure will need a semafor/spinlock */
 struct netdev_data {
+    /* TODO might need to use uint32_t for the sake of network communication */
+    unsigned int nlpid; /* pid of the process that created this device */
+    char *name; /* name of the device provided by the process */
     struct cdev cdev;
     struct device *device;
     /* TODO
@@ -65,6 +70,8 @@ struct file_operations netdev_fops = {
     .fallocate         = netdev_fo_fallocate,
     .show_fdinfo       = netdev_fo_show_fdinfo
 };
+
+int netdev_create(int nlpid, char *name, 
 
 static void netdev_cleanup(void) {
     /* TODO
