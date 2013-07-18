@@ -1,10 +1,16 @@
-#include <string.h> /* memset, memcopy, memmove, memcmp */
-#include <unistd.h> /* close */
-#include <stdlib.h> /* malloc */
-#include <stdio.h>  /* printf */
+#include <string.h>        /* memset, memcopy, memmove, memcmp */
+#include <unistd.h>        /* close                            */
+#include <stdlib.h>        /* malloc                           */
+#include <stdio.h>         /* printf                           */
+#include <sys/socket.h>    /* socklen_t */
+#include <sys/wait.h>      /* waitpid                          */
+#include <sys/types.h>     /* pid_t                            */
 #include <errno.h>
-#include <sys/socket.h>
 #include <linux/netlink.h>
+#include <arpa/inet.h>      /* sockaddr_in */
+#include <netinet/in.h>     /* sockaddr_in */
+#include <netinet/ip.h> 
+#include <signal.h>         /* signal */
 
 #include "protocol.h"
 
@@ -43,7 +49,92 @@ int netlink_setup() {
     return sock_fd;
 }
 
-int main() {
+void sig_chld(int signo) {
+    pid_t pid;
+    int stat;
+
+    while ( (pid = waitpid(-1, &stat, WNOHANG)) > 0 ) {
+        /* TODO should not use printf in signal handling */
+        printf("ALERT: child %d terminated\n", pid);
+    }
+
+    return;
+}
+
+int netdev_server(int connfd) {
+    /* TODO service new connection from a netdev client */
+    return 1;
+}
+
+int netdev_listener() {
+    int listenfd, connfd;
+    int rvalue;
+    pid_t childpid;
+    socklen_t clilen;
+    struct sockaddr_in cliaddr, servaddr;
+
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if ( listenfd < 0 ) {
+        perror("netdev_listener: failed to create socket");
+        return -1;
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port   = htons(NETDEV_SERVER_PORT);
+
+    rvalue = bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
+
+    if ( rvalue < 0 ) {
+        perror("netdev_listener: failed to bind to address");
+        return -1;
+    }
+
+    rvalue = listen(listenfd, NETDEV_LISTENQ);
+
+    if ( rvalue < 0 ) {
+        perror("netdev_listener: failed to listen");
+        return -1;
+    }
+
+    /* na potrzbey waitpid */
+    signal(SIGCHLD, sig_chld);
+
+    while (1) {
+        clilen = sizeof(cliaddr);
+
+        if ( (connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen)) < 0 ) {
+            if (errno == EINTR) {
+                continue;
+            } else {
+                perror("netdev_listener: accept error");
+            }
+        }
+        
+        /* fork for every new client and serve it */
+        if ( (childpid = fork()) ==0 ) {
+            /* decrease the counter for listening socket, this process won't
+             * use it */
+            close(listenfd);
+
+            rvalue = netdev_server(connfd);
+            if ( rvalue < 0 ) {
+                perror("netdev_listener: server process failed");
+            }
+
+            exit(0);
+        }
+
+        /* decreas the counter for new connection */
+        close(connfd);
+    }
+}
+
+void netdev_client(char *name, char *address) {
+    /* TODO start a new connection with a netdev server and register a device
+     * with the netdev kernel driver */
     struct sockaddr_nl dest_addr;
     struct nlmsghdr *p_nlh = NULL;
     struct iovec iov;
@@ -54,6 +145,9 @@ int main() {
     printf("Netlink protocol: %d\n", NETLINK_PROTOCOL);
     sock_fd = netlink_setup();
     printf("sock_fd: %d\n", sock_fd);
+    if ( sock_fd < 0 ) {
+        return;
+    }
 
     /* zero out struct before using it */
     memset(&dest_addr, 0, sizeof(dest_addr));
@@ -90,11 +184,24 @@ int main() {
         if (rvalue <= 0) {
             break;
         }
-        printf("Received message from pid: %d\n\tmsgtype:\t%d\n\tpayload:\t%s\n",
-                                                    p_nlh->nlmsg_pid,
-                                                    p_nlh->nlmsg_type,
-                                                    (char*)NLMSG_DATA(p_nlh));
+        printf("Received message from pid: %d\
+                \n\ttype:\t%d\n\tpayload:\t%s\n",
+                p_nlh->nlmsg_pid,
+                p_nlh->nlmsg_type,
+                (char*)NLMSG_DATA(p_nlh));
     }
 
     close(sock_fd);
+}
+
+int main(int argc, char *argv[]) {
+    /* TODO these values will have to be read from a config file */
+    netdev_client("netdev","192.168.1.13");
+
+    /* TODO start netdev listener wiating for connections from clients */
+    if ( netdev_listener() ) {
+        printf("netdev: could not start listener\n");
+    }
+
+    return 1;
 }
