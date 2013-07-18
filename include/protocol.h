@@ -4,7 +4,10 @@
 /* defines the default netlink server port */
 #define NETDEV_SERVER_PORT 9999
 
-#define NETDEV_MAXLINE 1024
+#define NETDEV_MAXLINE  1024
+
+/* 2nd argument to listen() */
+#define NETDEV_LISTENQ  1024
 
 /* defines the protocol used, we want our own protocol */
 #define NETLINK_PROTOCOL 31
