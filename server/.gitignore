@@ -16,3 +16,6 @@ server
 *.exe
 *.out
 *.app
+
+# NFS shit
+.nfs*
