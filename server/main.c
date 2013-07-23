@@ -9,10 +9,11 @@
 #include <linux/netlink.h>
 #include <arpa/inet.h>      /* sockaddr_in */
 #include <netinet/in.h>     /* sockaddr_in */
-#include <netinet/ip.h> 
+#include <netinet/ip.h>
 #include <signal.h>         /* signal */
 
 #include "protocol.h"
+#include "signal.h"
 
 #define MAX_PAYLOAD 1024 /* maximum payload size*/
 
@@ -36,9 +37,11 @@ int netlink_setup() {
     p_src_addr->nl_family = AF_NETLINK;
     p_src_addr->nl_pid = getpid(); /* self pid */
 
-    /* p_src_addr has to be casted to (struct sockaddr*) for compatibility with
-     * IPv4 and IPv6 structures, sockaddr_in and sockaddr_in6. */
-    rvalue = bind(sock_fd, (struct sockaddr*)p_src_addr, sizeof(*p_src_addr));
+    /* p_src_addr has to be casted to (struct sockaddr*) for compatibility
+     * with IPv4 and IPv6 structures, sockaddr_in and sockaddr_in6. */
+    rvalue = bind(sock_fd,
+                (SA *)p_src_addr,
+                sizeof(*p_src_addr));
 
     if ( rvalue < 0 ) {
         perror("socket error");
@@ -67,8 +70,8 @@ int netdev_server(int connfd) {
 }
 
 void netdev_client(char *name, char *address) {
-    /* TODO start a new connection with a netdev server and register a device
-     * with the netdev kernel driver */
+    /* TODO start a new connection with a netdev server and register
+     * a device with the netdev kernel driver */
     struct sockaddr_nl dest_addr;
     struct nlmsghdr *p_nlh = NULL;
     struct iovec iov;
@@ -95,7 +98,7 @@ void netdev_client(char *name, char *address) {
     p_nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
     p_nlh->nlmsg_pid = getpid();
     p_nlh->nlmsg_flags = 0;
-    p_nlh->nlmsg_type = MSGTYPE_CONTROL_ECHO;
+    p_nlh->nlmsg_type = MSGT_CONTROL_ECHO;
 
     strcpy(NLMSG_DATA(p_nlh), "test echo message");
 
@@ -110,6 +113,9 @@ void netdev_client(char *name, char *address) {
     printf("Sending message to kernel\n");
     sendmsg(sock_fd,p_msg,0);
     printf("Waiting for message from kernel\n");
+
+    p_nlh->nlmsg_type = MSGT_CONTROL_REGISTER;
+    sendmsg(sock_fd,p_msg,0);
 
     /* Read message from kernel */
     for ( ; ; ) {
@@ -134,6 +140,8 @@ int netdev_listener() {
     pid_t childpid;
     socklen_t clilen;
     struct sockaddr_in cliaddr, servaddr;
+    char str[INET_ADDRSTRLEN];
+    void *ptr;
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -141,13 +149,16 @@ int netdev_listener() {
         perror("netdev_listener: failed to create socket");
         return -1;
     }
+    printf("netdev_listener: listenfd = %d\n", listenfd);
 
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port   = htons(NETDEV_SERVER_PORT);
 
-    rvalue = bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    rvalue = bind(listenfd,
+                (SA *)&servaddr,
+                sizeof(servaddr));
 
     if ( rvalue < 0 ) {
         perror("netdev_listener: failed to bind to address");
@@ -164,21 +175,33 @@ int netdev_listener() {
     /* na potrzbey waitpid */
     signal(SIGCHLD, sig_chld);
 
+    printf("netdev_listener: starting listener\n");
     while (1) {
         clilen = sizeof(cliaddr);
 
-        if ( (connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen)) < 0 ) {
+        if ((connfd = accept(listenfd, (SA *) &cliaddr, &clilen)) < 0) {
             if (errno == EINTR) {
                 continue;
             } else {
                 perror("netdev_listener: accept error");
             }
         }
-        
+
+        ptr = (char *)inet_ntop(cliaddr.sin_family ,
+                                &cliaddr.sin_addr,
+                                str,
+                                sizeof(str));
+
+        if ( ptr != NULL ) {
+            printf("netdev_listener: new connection from %s:%d\n",
+                    str,
+                    ntohs(cliaddr.sin_port));
+        }
+
         /* fork for every new client and serve it */
         if ( (childpid = fork()) ==0 ) {
-            /* decrease the counter for listening socket, this process won't
-             * use it */
+            /* decrease the counter for listening socket,
+             * this process won't use it */
             close(listenfd);
 
             rvalue = netdev_server(connfd);
@@ -195,8 +218,14 @@ int netdev_listener() {
 }
 
 int main(int argc, char *argv[]) {
+    int pid;
     /* TODO these values will have to be read from a config file */
-    netdev_client("netdev","192.168.1.13");
+    if ( ( pid = fork() ) == 0 ) {
+        netdev_client("netdev","192.168.1.13");
+        exit(0);
+    } else if ( pid < 0 ) {
+        perror("main: failed to fork");
+    }
 
     /* TODO start netdev listener wiating for connections from clients */
     if ( netdev_listener() ) {
