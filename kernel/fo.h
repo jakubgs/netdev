@@ -15,7 +15,6 @@ ssize_t netdev_fo_read (struct file *flip, char __user *data, size_t c, loff_t *
 ssize_t netdev_fo_write (struct file *flip, const char __user *data, size_t c, loff_t *offset);
 ssize_t netdev_fo_aio_read (struct kiocb *a, const struct iovec *b, unsigned long c, loff_t offset);
 ssize_t netdev_fo_aio_write (struct kiocb *a, const struct iovec *b, unsigned long c, loff_t d);
-int netdev_fo_readdir (struct file *filp, void *b, filldir_t c);
 unsigned int netdev_fo_poll (struct file *filp, struct poll_table_struct *wait);
 long netdev_fo_unlocked_ioctl (struct file *filp, unsigned int b, unsigned long c);
 long netdev_fo_compat_ioctl (struct file *filp, unsigned int b, unsigned long c);
@@ -43,7 +42,6 @@ ssize_t netdev_fo_read_send_req (struct file *flip, char __user *data, size_t c,
 ssize_t netdev_fo_write_send_req (struct file *flip, const char __user *data, size_t c, loff_t *offset);
 size_t netdev_fo_aio_read_send_req (struct kiocb *a, const struct iovec *b, unsigned long c, loff_t offset);
 ssize_t netdev_fo_aio_write_send_req (struct kiocb *a, const struct iovec *b, unsigned long c, loff_t d);
-int netdev_fo_readdir_send_req (struct file *filp, void *b, filldir_t c);
 unsigned int netdev_fo_poll_send_req (struct file *filp, struct poll_table_struct *wait);
 long netdev_fo_unlocked_ioctl_send_req (struct file *filp, unsigned int b, unsigned long c);
 long netdev_fo_compat_ioctl_send_req (struct file *filp, unsigned int b, unsigned long c);
@@ -64,5 +62,7 @@ ssize_t netdev_fo_splice_read_send_req (struct file *filp, loff_t *offset, struc
 int netdev_fo_setlease_send_req (struct file *filp, long b, struct file_lock **c);
 long netdev_fo_fallocate_send_req (struct file *filp, int b, loff_t offset, loff_t len);
 int netdev_fo_show_fdinfo_send_req (struct seq_file *a, struct file *filp);
+
+extern struct file_operations netdev_fops;
 
 #endif /* _FO_H */
