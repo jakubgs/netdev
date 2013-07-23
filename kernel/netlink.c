@@ -1,8 +1,9 @@
-#include <linux/module.h>
 #include <linux/netlink.h>  /* for netlink sockets */
+#include <linux/module.h>
 #include <net/sock.h>
 
 #include "netlink.h"
+#include "netdevmgm.h"
 #include "protocol.h"
 
 struct sock *p_nl_sk = NULL;
@@ -27,7 +28,7 @@ int netlink_echo(int pid, char *p_msg) {
         rvalue = -1;
         goto skbfree;
     } 
-    p_nlh = nlmsg_put(p_skb_out, 0, 0, MSGTYPE_CONTROL_ECHO, msg_size, 0);  
+    p_nlh = nlmsg_put(p_skb_out, 0, 0, MSGT_CONTROL_ECHO, msg_size, 0);  
 
     NETLINK_CB(p_skb_out).dst_group = 0; /* not in mcast group */
 
@@ -47,10 +48,11 @@ skbfree:
     return -1;
 }
 
-/* TODO this will have to be modified to receive responses from server process,
- * find the appropriate wait queue and release it once the reply is assigned
- * to appropriate variables in struct describing one pending file operaion */
 void netlink_recv(struct sk_buff *p_skb) {
+    /* TODO this will have to be modified to receive responses from
+     * server process, find the appropriate wait queue and release it
+     * once the reply is assigned to appropriate variables in struct
+     * describing one pending file operaion */
     struct nlmsghdr *p_nlh;
     short msgtype;
 
@@ -58,7 +60,8 @@ void netlink_recv(struct sk_buff *p_skb) {
 
     p_nlh = (struct nlmsghdr*)p_skb->data;
 
-    pid     = p_nlh->nlmsg_pid;  /* pid of sending process, also, port id */
+    /* pid of sending process, also, port id */
+    pid     = p_nlh->nlmsg_pid;
     msgtype = p_nlh->nlmsg_type;
 
     printk(KERN_DEBUG "netlink: msg type: %d, from pid: %d\n", msgtype, pid);
@@ -68,43 +71,60 @@ void netlink_recv(struct sk_buff *p_skb) {
     }
 
     /* if msgtype is a netdev control message */
-    if ( msgtype >= MSGTYPE_CONTROL_START && msgtype < MSGTYPE_CONTROL_END ) {
+    if ( msgtype >= MSGT_CONTROL_START && msgtype < MSGT_CONTROL_END ) {
         switch (msgtype) {  /* handle the request */
-            case MSGTYPE_CONTROL_ECHO:
+            case MSGT_CONTROL_ECHO:
                 netlink_echo(pid, (char*)nlmsg_data(p_nlh));
                 break;
-            case MSGTYPE_CONTROL_REGISTER:
+            case MSGT_CONTROL_VERSION:
                 break;
-            case MSGTYPE_CONTROL_UNREGISTER:
+            case MSGT_CONTROL_REGISTER:
+                netdev_create(pid, "netdev");
+                break;
+            case MSGT_CONTROL_UNREGISTER:
+                break;
+            case MSGT_CONTROL_RECOVER:
+                break;
+            case MSGT_CONTROL_DRIVER_STOP:
+                break;
+            case MSGT_CONTROL_LOSTCONN:
                 break;
             default:
-                printk(KERN_WARNING "netlink: unknown control message type: %d\n", msgtype);
+                printk(KERN_ERR
+                        "netlink: unknown control message type: %d\n",
+                        msgtype);
                 break;
         }
     /* if it's not a control message it has to be a file operation */
-    } else if ( msgtype > MSGTYPE_FO_START && msgtype < MSGTYPE_FO_END ) {
-        printk(KERN_DEBUG "netlink: file opration message type: %d\n", msgtype);
-        /* TODO reply to a file operation, queue it for the fo thread */
+    } else if ( msgtype > MSGT_FO_START && msgtype < MSGT_FO_END ) {
+        printk(KERN_DEBUG "netlink: file opration message type: %d\n",
+                            msgtype);
+        /* TODO reply to a file operation, find it in the queue and
+         * release from it's wait */
     } else { /* otherwise we don't know what this message type is */
-        printk(KERN_DEBUG "netlink: unknown message type: %d\n", msgtype);
+        printk(KERN_DEBUG "netlink: unknown message type: %d\n",
+                            msgtype);
     }
 }
 
-/* TODO should receive not only msgtype but also a buffer with properly 
- * formatted arguments to the file operation from the netdev_fo_OP_send_req */
-int netlink_send(short msgtype) {
+int netlink_send(struct netdev_data *nddata, short msgtype, char *buff, size_t bufflen) {
+    /* TODO should receive not only msgtype but also a buffer with
+     * properly formatted arguments from netdev_fo_OP_send_req */
     struct nlmsghdr *p_nlh;
     struct sk_buff *p_skb_out;
     char *p_msg;
     int msg_size;
     int rvalue;
 
-    if ( pid == 0 ) { /* don't send anything if we don't have the pid yet */
+    /* don't send anything if we don't have the pid yet,
+     * should be impossible since first process needs to
+     * register a device before it can send events */
+    if ( pid == 0 ) {
         printk(KERN_ERR "netlink: wrong pid: %d\n", pid);
         return -1;
     }
 
-    if (msgtype == MSGTYPE_CONTROL_ECHO) {
+    if (msgtype == MSGT_CONTROL_ECHO) {
         p_msg = "ECHO";
     } else {
         p_msg = "Not implemented yet.";
@@ -123,7 +143,7 @@ int netlink_send(short msgtype) {
 
     strncpy(nlmsg_data(p_nlh) ,p_msg ,msg_size);
     
-    /* send messsage, nlmsg_unicast will take care of freeing p_skb_out */
+    /* send messsage,nlmsg_unicast will take care of freeing p_skb_out */
     rvalue = nlmsg_unicast(p_nl_sk, p_skb_out, pid);
 
     if( rvalue > 0 ) {
@@ -138,18 +158,20 @@ skbfree:
 }
 
 int netlink_init(void) {
-    /* NOTE:
-     * new structure for configuring netlink socket changed in linux kernel 3.8
+    /* NOTE: new structure for configuring netlink socket changed in
+     * linux kernel 3.8
      * http://stackoverflow.com/questions/15937395/netlink-kernel-create-is-not-working-with-latest-linux-kernel
      */
     struct netlink_kernel_cfg nl_cfg;
     nl_cfg.groups = 0;           // used for multicast
     nl_cfg.flags = 0;            // TODO
-    nl_cfg.input = netlink_recv; // pointer to function that will receive data
+    nl_cfg.input = netlink_recv; // function that will receive data
 
     printk("netdev: Netlink protocol: %d\n", NETLINK_PROTOCOL);
 
-    p_nl_sk = netlink_kernel_create(&init_net, NETLINK_PROTOCOL, &nl_cfg);
+    p_nl_sk = netlink_kernel_create(&init_net,
+                                    NETLINK_PROTOCOL,
+                                    &nl_cfg);
 
     if(!p_nl_sk) {
         printk(KERN_ALERT "Error creating socket.\n");
@@ -162,8 +184,9 @@ int netlink_init(void) {
 
 void netlink_exit(void) {
     printk(KERN_INFO "netdev: closing Netlink\n");
-    /* TODO will have to close connections of all devices with the server process
-     * or just close the socket if each device will have it's own process/socket */
+    /* TODO will have to close connections of all devices with the server
+     * process or just close the socket if each device will have it's own
+     * process/socket */
 
     /* can only be done once the process releases the socket, otherwise
      * kernel will refuse to unload the module */
