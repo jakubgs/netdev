@@ -1,5 +1,6 @@
 #include "fo.h"
 #include <linux/sched.h>    /* access to current->comm and current->pid */
+#include <linux/module.h>
 
 static void pk(const char * name) {
     printk(KERN_INFO "netdev: File Operation called by \"%s\", PID: %d - %s\n",
@@ -28,10 +29,6 @@ ssize_t netdev_fo_aio_write ( struct kiocb *a, const struct iovec *b, unsigned l
     pk(__FUNCTION__);
     return netdev_fo_aio_write_send_req(a, b, c, offset);
 }
-int     netdev_fo_readdir ( struct file *filp, void *b, filldir_t c) {
-    pk(__FUNCTION__);
-    return netdev_fo_readdir_send_req(filp, b, c);
-}
 unsigned int netdev_fo_poll ( struct file *filp, struct poll_table_struct *wait) {
     pk(__FUNCTION__);
     return netdev_fo_poll_send_req(filp, wait);
@@ -50,6 +47,8 @@ int     netdev_fo_mmap ( struct file *filp, struct vm_area_struct *b) {
 }
 int     netdev_fo_open ( struct inode *inode, struct file *filp) {
     pk(__FUNCTION__);
+
+    //flip->private_data =
     return netdev_fo_open_send_req(inode, filp);
 }
 int     netdev_fo_flush ( struct file *filp, fl_owner_t id) {
@@ -112,3 +111,35 @@ int netdev_fo_show_fdinfo( struct seq_file *a, struct file *filp) {
     pk(__FUNCTION__);
     return netdev_fo_show_fdinfo_send_req(a, filp);
 }
+
+/* TODO this struct will have to be generated dynamically based on the 
+ * operations supported by the device on the other end */
+struct file_operations netdev_fops = {
+    .owner             = THIS_MODULE,
+    .llseek            = netdev_fo_llseek,
+    .read              = netdev_fo_read,
+    .write             = netdev_fo_write,
+    .aio_read          = netdev_fo_aio_read,
+    .aio_write         = netdev_fo_aio_write,
+    .readdir           = NULL, /* useless for devices */
+    .poll              = netdev_fo_poll,/* NULL assumes it's not blocing */
+    .unlocked_ioctl    = netdev_fo_unlocked_ioctl,
+    .compat_ioctl      = netdev_fo_compat_ioctl,
+    .mmap              = netdev_fo_mmap,
+    .open              = netdev_fo_open,
+    .flush             = netdev_fo_flush, /* rarely used for devices */
+    .release           = netdev_fo_release,
+    .fsync             = netdev_fo_fsync,
+    .aio_fsync         = netdev_fo_aio_fsync,
+    .fasync            = netdev_fo_fasync,
+    .lock              = netdev_fo_lock, /* almost never implemented */
+    .sendpage          = netdev_fo_sendpage, /* usually not used */
+    .get_unmapped_area = netdev_fo_get_unmapped_area, /* mostly NULL */
+    .check_flags       = netdev_fo_check_flags, /* fcntl(F_SETFL...) */
+    .flock             = netdev_fo_flock,
+    .splice_write      = netdev_fo_splice_write, /* needs DMA */
+    .splice_read       = netdev_fo_splice_read, /* needs DMA */
+    .setlease          = netdev_fo_setlease,
+    .fallocate         = netdev_fo_fallocate,
+    .show_fdinfo       = netdev_fo_show_fdinfo
+};
