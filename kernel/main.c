@@ -22,7 +22,9 @@ dev_t netdev_devno;
 struct class *netdev_class;
 
 static void netdev_cleanup(void) {
-    netdev_end();
+    while (netdev_end()) {
+        printk(KERN_ERR "netdev_cleanup: failed to delete devices");
+    }
 
     if (netdev_class)
         class_destroy(netdev_class);
