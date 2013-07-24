@@ -82,6 +82,7 @@ void netlink_recv(struct sk_buff *p_skb) {
                 netdev_create(pid, "netdev");
                 break;
             case MSGT_CONTROL_UNREGISTER:
+                netdev_destroy(pid);
                 break;
             case MSGT_CONTROL_RECOVER:
                 break;
