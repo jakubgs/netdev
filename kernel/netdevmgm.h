@@ -11,6 +11,7 @@
 extern dev_t netdev_devno; /* __u32, unsigned 32bit type, 12 bit for majro, 20 minor */
 extern struct class *netdev_class;
 extern unsigned int netdev_count;
+extern struct netdev_data **netdev_devices; /* array with all devices */
 
 /* for now we use only one, but in future we will use one for every device */
 /* TODO this structure will need a semafor/spinlock */
@@ -31,9 +32,9 @@ struct netdev_data {
 
 int netdev_create(int nlpid, char *name);
 int netdev_destroy(int nlpid);
-void netdev_htable_init(void);
-struct netdev_data* netdev_find(int nlpid);
 int netdev_end(void);
+void netdev_prepare(void);
+struct netdev_data* netdev_find(int nlpid);
 
 #endif
 
