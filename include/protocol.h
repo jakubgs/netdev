@@ -4,13 +4,13 @@
 /* this will be provided by the name variable in netdev_data struct */
 #define NETDEV_NAME             "netdev"
 
-/* defines how many minor numbers the kernel driver will register */
-#define NETDEV_MINOR_COUNT      10
-#define NETDEV_MAJOR_NUMBER     266
+/* let the kernel decide the major number */
+#define NETDEV_MAJOR            0
 
 /* defines the number which is the power of two which gives the max number
  * of devices this driver will manage and store in the hashtable */
 #define NETDEV_HASHTABLE_SIZE   5
+#define NETDEV_MAX_DEVICES      32 /* 2 to the power of 5(HASHTABLE_SIE) */
 /* defines the default netlink server port */
 #define NETDEV_SERVER_PORT      9999
 
