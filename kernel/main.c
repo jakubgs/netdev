@@ -71,8 +71,8 @@ static int __init netdev_init(void) { /* Constructor */
         goto fail;
     }
 
-    /* create table for devices */
-    netdev_htable_init();
+    /* create array and hashtable for devices */
+    netdev_prepare();
 
     return 0; /* success */
 
