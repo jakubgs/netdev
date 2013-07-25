@@ -4,10 +4,12 @@
 #include <linux/types.h>
 #include <linux/fs.h>
 
+#include "netdevmgm.h"
+
 /* used for sending file operations converted by send_req functions to 
  * a buffer of certian size to the loop sending operations whtough netlink
  * to the server process */
-int send_fo (short fl_flag, const char *data, size_t size);
+int send_fo (short fl_flag, struct netdev_data *, const char *data, size_t size);
 
 /* file operation functions for file_operations structure */
 loff_t netdev_fo_llseek (struct file *flip, loff_t offset, int whence);
