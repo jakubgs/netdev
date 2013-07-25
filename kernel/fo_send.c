@@ -7,22 +7,22 @@
  * to the server process */
 /* TODO might require a struct that will also hold the wait queue to unblock waiting
  * send_req function once receiving loop gets the response */
-int send_fo (short fl_flag, const char *data, size_t size) {
-    netlink_send((struct netdev_data *) NULL, fl_flag, NULL, 0);
+int send_fo (short fl_flag, struct netdev_data *nddata, const char *data, size_t size) {
+    netlink_send((struct netdev_data *) nddata, fl_flag, NULL, 0);
     /* TODO wait queue or semafor lock waiting for a reply that will be raised
      * by netlink_recv function once it receives it */
     return -EIO;
 }
 
 /* functions for sending and receiving file operations */
-loff_t netdev_fo_llseek_send_req (struct file *flip, loff_t offset, int whence) {
+loff_t netdev_fo_llseek_send_req (struct file *filp, loff_t offset, int whence) {
     return -EIO;
 }
-ssize_t netdev_fo_read_send_req (struct file *flip, char __user *data, size_t c, loff_t *offset) {
-    send_fo(MSGT_FO_READ, NULL, 0); // Test sending operations
+ssize_t netdev_fo_read_send_req (struct file *filp, char __user *data, size_t c, loff_t *offset) {
+    send_fo(MSGT_FO_READ, filp->private_data, NULL, 0); // Test sending operations
     return -EIO;
 }
-ssize_t netdev_fo_write_send_req (struct file *flip, const char __user *data, size_t c, loff_t *offset) {
+ssize_t netdev_fo_write_send_req (struct file *filp, const char __user *data, size_t c, loff_t *offset) {
     return -EIO;
 }
 size_t netdev_fo_aio_read_send_req (struct kiocb *a, const struct iovec *b, unsigned long c, loff_t offset) {
@@ -44,15 +44,17 @@ int netdev_fo_mmap_send_req (struct file *filp, struct vm_area_struct *b) {
     return -EIO;
 }
 int netdev_fo_open_send_req (struct inode *inode, struct file *filp) {
-    send_fo(MSGT_FO_OPEN, NULL, 0); // Test sending operations
+    printk(KERN_DEBUG "%s: filp->private_data = %p\n", __FUNCTION__,
+                                                filp->private_data);
+    send_fo(MSGT_FO_OPEN, (struct netdev_data*)filp->private_data, NULL, 0);
     return 0; /* return success to see other operations */
 }
 int netdev_fo_flush_send_req (struct file *filp, fl_owner_t id) {
-    send_fo(MSGT_FO_FLUSH, NULL, 0); // Test sending operations
+    send_fo(MSGT_FO_FLUSH, (struct netdev_data*)filp->private_data, NULL, 0);
     return 0; /* does nothing, can return success */
 }
 int netdev_fo_release_send_req (struct inode *a, struct file *filp) {
-    send_fo(MSGT_FO_RELEASE, NULL, 0); // Test sending operations
+    send_fo(MSGT_FO_RELEASE, (struct netdev_data*)filp->private_data, NULL, 0);
     return 0; /* return success, no harm done */
 }
 int netdev_fo_fsync_send_req (struct file *filp, loff_t b, loff_t offset, int d) {
