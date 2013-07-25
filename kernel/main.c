@@ -16,8 +16,8 @@ MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Jakub Sokołowski <panswiata_at_gmail_com>");
 MODULE_DESCRIPTION("This is my first kernel driver. Please don't use it.");
 
-static int dev_count = NETDEV_MINOR_COUNT; /* TODO make this a driver option */
-static int netdev_major = 0;   /* TODO make this a driver option */
+static int dev_count = NETDEV_MAX_DEVICES; /* TODO driver option */
+static int netdev_major = NETDEV_MAJOR; /* TODO driver option */
 dev_t netdev_devno;
 struct class *netdev_class;
 
