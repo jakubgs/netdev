@@ -103,7 +103,7 @@ void netdev_htable_init(void) {
 struct netdev_data* netdev_find(int nlpid) {
     struct netdev_data *nddata;
 
-    if (down_read(&netdev_htable_sem)) {
+    if (down_read_trylock(&netdev_htable_sem)) {
         hash_for_each_possible(netdev_htable, nddata, hnode, (int)nlpid) {
             if ( nddata->nlpid == nlpid ) {
                 up_read(&netdev_htable_sem);
