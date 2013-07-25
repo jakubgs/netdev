@@ -1,6 +1,8 @@
 #ifndef _FO_STRUCT_H
 #define _FO_STRUCT_H
 
+#include <linux/types.h>
+
 /* structures used to pass file operation arguments to sending function */
 /* TODO add return values of functions as "rvalue" or something like that */
 struct s_fo_llseek {
@@ -29,10 +31,6 @@ struct s_fo_aio_write {
     unsigned long c;
     loff_t offset;
 };
-struct s_fo_readdir {
-    void *b;
-    filldir_t c;
-};
 struct s_dev_fo_poll {
     struct poll_table_struct *wait;
 };
@@ -54,7 +52,7 @@ struct s_fo_flush {
     fl_owner_t id;
 };
 struct s_fo_release {
-    struct inode *a;
+    struct inode *inode;
 };
 struct s_fo_fsync {
     loff_t b;
