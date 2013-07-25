@@ -7,6 +7,7 @@
 static DEFINE_HASHTABLE(netdev_htable, NETDEV_HASHTABLE_SIZE);
 static struct rw_semaphore netdev_htable_sem;
 unsigned int netdev_count;
+struct netdev_data **netdev_devices;
 
 /*  TODO all this shit will HAVE to use semafors if it has to work */
 int netdev_create(int nlpid, char *name) {
@@ -19,6 +20,7 @@ int netdev_create(int nlpid, char *name) {
                         NETDEV_MAX_DEVICES);
         return 0;
     }
+    /* TODO needs a reuse of device numbers from netdev_devices array */
 
     /* GFP_KERNEL means this function can be blocked,
      * so it can't be part of an atomic operation.
@@ -28,6 +30,7 @@ int netdev_create(int nlpid, char *name) {
     nddata->cdev = (struct cdev *) kzalloc(
                                 sizeof(struct cdev), GFP_KERNEL);
 
+    printk(KERN_DEBUG "netdev_create: nddata = %p\n", nddata);
     init_rwsem(&nddata->sem); /* lock the semaphor to avoid rece */
     nddata->nlpid = nlpid;
     nddata->devname = name;
@@ -54,7 +57,7 @@ int netdev_create(int nlpid, char *name) {
     nddata->device = device_create(netdev_class,
                     NULL,              /* no aprent device           */
                     nddata->cdev->dev, /* major and minor numbers    */
-                    nddata,            /* private data of device     */
+                    nddata,            /* device data for callback   */
                     "%s%d",            /* defines name of the device */
                     name,
                     netdev_count);
@@ -75,10 +78,11 @@ int netdev_create(int nlpid, char *name) {
     netdev_count++;
     /* add the device to hashtable with all devices since it's ready */
     hash_add(netdev_htable, &nddata->hnode, (int)nlpid);
+    netdev_devices[MINOR(nddata->cdev->dev)] = nddata;
 
     return 1;
 fail:
-    netdev_destroy(nlpid);
+    netdev_destroy(nlpid); /* TODO fix this shit */
     return 0;
 }
 
@@ -94,20 +98,21 @@ int netdev_destroy(int nlpid) {
                                     (int)nlpid) {
             if (nddata->nlpid == nlpid) {
                 hash_del(&nddata->hnode);
+                netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
             }
         }
         up_read(&netdev_htable_sem);
     }
 
     if (nddata) {
-        if (down_write_trylock(&netdev_htable_sem)) {
-            cdev_del(nddata->cdev);
-
+        if (down_write_trylock(&nddata->sem)) {
             device_destroy(netdev_class, nddata->cdev->dev);
+            cdev_del(nddata->cdev);
             /* kfree can take null as argument, no test needed */
+            kfree(nddata->cdev);
             kfree(nddata);
             
-            up_write(&netdev_htable_sem);
+            up_write(&nddata->sem);
             return 0; /* success */
         }
     }
@@ -115,7 +120,43 @@ int netdev_destroy(int nlpid) {
     return 1;
 }
 
-void netdev_htable_init(void) {
+int netdev_end(void) {
+    int i = 0;
+    struct netdev_data *nddata = NULL;
+    struct hlist_node *tmp;
+
+    if (down_write_trylock(&netdev_htable_sem)) {
+        /* needs to be _safe so we can delete elements inside the loop */
+        hash_for_each_safe(netdev_htable, i, tmp, nddata, hnode) {
+            printk(KERN_DEBUG "netdev_end: deleting dev pid = %d\n", 
+                                nddata->nlpid);
+            hash_del(&nddata->hnode); /* delete the element from table */
+            netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
+            
+            if (nddata) {
+                if (down_write_trylock(&nddata->sem)) {
+                    device_destroy(netdev_class, nddata->cdev->dev);
+                    cdev_del(nddata->cdev);
+                    /* kfree can take null as argument, no test needed */
+                    kfree(nddata->cdev);
+                    kfree(nddata);
+
+                    up_write(&nddata->sem);
+                }
+            }
+        }
+        up_write(&netdev_htable_sem);
+        return 0; /* success */
+    }
+    return 1; /* failure */
+}
+
+void netdev_prepare(void) {
+    /* create and array for all drivices which will be indexed with 
+     * minor numbers of those devices */
+    netdev_devices = (struct netdev_data**)kcalloc(NETDEV_MAX_DEVICES,
+                                            sizeof(struct netdev_data*),
+                                            GFP_KERNEL);
     /* create the hashtable which will store data about created devices
      * and for easy access through pid */
     hash_init(netdev_htable);
@@ -136,31 +177,4 @@ struct netdev_data* netdev_find(int nlpid) {
     }
 
     return NULL;
-}
-
-int netdev_end(void) {
-    int i = 0;
-    struct netdev_data *nddata = NULL;
-    struct hlist_node *tmp;
-
-    if (down_write_trylock(&netdev_htable_sem)) {
-        /* needs to be _safe so we can delete elements inside the loop */
-        hash_for_each_safe(netdev_htable, i, tmp, nddata, hnode) {
-            printk(KERN_DEBUG "netdev_end: deleting netdev->nlpid = %d\n",
-                    nddata->nlpid);
-            hash_del(&nddata->hnode); /* delete the element from table */
-
-            if (nddata) {
-                device_destroy(netdev_class, nddata->cdev->dev);
-
-                cdev_del(nddata->cdev);
-            }
-            /* kfree can take null as argument, no test needed */
-            kfree(nddata->cdev);
-            kfree(nddata);
-        }
-        up_write(&netdev_htable_sem);
-        return 0; /* success */
-    }
-    return 1; /* failure */
 }
