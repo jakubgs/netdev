@@ -10,6 +10,7 @@
 
 extern dev_t netdev_devno; /* __u32, unsigned 32bit type, 12 bit for majro, 20 minor */
 extern struct class *netdev_class;
+extern unsigned int netdev_count;
 
 /* for now we use only one, but in future we will use one for every device */
 /* TODO this structure will need a semafor/spinlock */
