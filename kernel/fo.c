@@ -2,6 +2,8 @@
 #include <linux/sched.h>    /* access to current->comm and current->pid */
 #include <linux/module.h>
 
+#include "netdevmgm.h"
+
 static void pk(const char * name) {
     printk(KERN_INFO "netdev: File Operation called by \"%s\", PID: %d - %s\n",
             current->comm,
@@ -46,9 +48,16 @@ int     netdev_fo_mmap ( struct file *filp, struct vm_area_struct *b) {
     return netdev_fo_mmap_send_req(filp, b);
 }
 int     netdev_fo_open ( struct inode *inode, struct file *filp) {
-    pk(__FUNCTION__);
+    struct netdev_data *nddata;
 
-    //flip->private_data =
+    pk(__FUNCTION__);
+    
+    /* get the device connected with this file */
+    nddata = netdev_devices[MINOR(inode->i_cdev->dev)];
+
+    /* set private data for easy access to netdev_data struct */
+    filp->private_data = (void*)nddata;
+
     return netdev_fo_open_send_req(inode, filp);
 }
 int     netdev_fo_flush ( struct file *filp, fl_owner_t id) {
