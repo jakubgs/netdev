@@ -18,7 +18,7 @@ extern struct netdev_data **netdev_devices; /* array with all devices */
 struct netdev_data {
     /* TODO might need to use uint32_t for the sake of network communication */
     unsigned int nlpid; /* pid of the process that created this device */
-    bool ready; /* set to false if netlink connection is lost */
+    bool active; /* set to false if netlink connection is lost */
     char *devname; /* name of the device provided by the process */
     struct cdev *cdev; /* internat struct representing char devices */
     struct device *device;
