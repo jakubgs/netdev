@@ -154,24 +154,22 @@ fail:
     return 0;
 }
 
-int netdev_destroy(int nlpid) {
+int ndmgm_find_destroy(int nlpid) {
     struct netdev_data *nddata = NULL;
-    struct hlist_node *tmp;
+
+    nddata = ndmgm_find(nlpid);
 
     if (down_read_trylock(&netdev_htable_sem)) {
-        hash_for_each_possible_safe(netdev_htable,
-                                    nddata,
-                                    tmp,
-                                    hnode,
-                                    (int)nlpid) {
-            if (nddata->nlpid == nlpid) {
-                hash_del(&nddata->hnode);
-                netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
-            }
-        }
+        hash_del(&nddata->hnode);
+        netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
+
         up_read(&netdev_htable_sem);
     }
 
+    return ndmgm_destroy(nddata);
+}
+
+int ndmgm_destroy(struct netdev_data *nddata) {
     if (nddata) {
         if (down_write_trylock(&nddata->sem)) {
             device_destroy(netdev_class, nddata->cdev->dev);
