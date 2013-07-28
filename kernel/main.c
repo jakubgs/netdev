@@ -22,7 +22,7 @@ dev_t netdev_devno;
 struct class *netdev_class;
 
 static void netdev_cleanup(void) {
-    while (netdev_end()) {
+    while (ndmgm_end()) {
         printk(KERN_ERR "netdev_cleanup: failed to delete devices");
     }
 
@@ -72,7 +72,7 @@ static int __init netdev_init(void) { /* Constructor */
     }
 
     /* create array and hashtable for devices */
-    netdev_prepare();
+    ndmgm_prepare();
 
     return 0; /* success */
 
