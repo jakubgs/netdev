@@ -9,31 +9,63 @@ static struct rw_semaphore netdev_htable_sem;
 unsigned int netdev_count;
 struct netdev_data **netdev_devices;
 
-/*  TODO all this shit will HAVE to use semafors if it has to work */
-int netdev_create(int nlpid, char *name) {
-    int err;
+struct netdev_data * ndmgm_alloc_data(int nlpid, char *name) {
+    int err = 0;
     struct netdev_data *nddata; /* TODO needs to be in a list */
 
     /* check if we have space for another device */
+    /* TODO needs a reuse of device numbers from netdev_devices array */
     if ( netdev_count + 1 > NETDEV_MAX_DEVICES ) {
         printk(KERN_ERR "netdev_create: max devices reached = %d\n",
                         NETDEV_MAX_DEVICES);
         return 0;
     }
-    /* TODO needs a reuse of device numbers from netdev_devices array */
 
     /* GFP_KERNEL means this function can be blocked,
      * so it can't be part of an atomic operation.
      * For that GFP_ATOMIC would have to be used. */
     nddata = (struct netdev_data *) kzalloc(
                                 sizeof(struct netdev_data), GFP_KERNEL);
+    if (!nddata) {
+        printk(KERN_ERR "netdev_create: failed to allocate nddata\n");
+        return NULL;
+    }
+
     nddata->cdev = (struct cdev *) kzalloc(
                                 sizeof(struct cdev), GFP_KERNEL);
+    if (!nddata->cdev) {
+        printk(KERN_ERR "netdev_create: failed to allocate nddata->cdev\n");
+        goto free_nddata;
+    }
 
-    printk(KERN_DEBUG "netdev_create: nddata = %p\n", nddata);
-    init_rwsem(&nddata->sem); /* lock the semaphor to avoid rece */
+    if ((err = kfifo_alloc(&nddata->fo_queue, NETDEV_FO_QUEUE_SIZE, GFP_KERNEL))) {
+        printk(KERN_ERR "netdev_create: failed to allocate fo_queue\n");
+        goto free_cdev;
+    }
+
+    nddata->queue_pool = kmem_cache_create(NETDEV_REQ_POOL_NAME,
+                        sizeof(struct fo_req),
+                        0, 0, NULL); /* no alignment, flags or constructor */
+    if (!nddata->queue_pool) {
+        printk(KERN_ERR "netdev_create: failed to allocate queue_pool\n");
+        goto free_fo_queue;
+    }
+
+    init_rwsem(&nddata->sem);
     nddata->nlpid = nlpid;
     nddata->devname = name;
+    nddata->active = true;
+
+    return nddata;
+free_fo_queue:
+    kfifo_free(&nddata->fo_queue);
+free_cdev:
+    kfree(nddata->cdev);
+free_nddata:
+    kfree(nddata);
+    return NULL;
+}
+
 
     printk(KERN_DEBUG "netdev_create: creating device \\dev\\%s%d\n",
                         name,
