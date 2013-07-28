@@ -92,6 +92,27 @@ int ndmgm_free_data(struct netdev_data *nddata) {
     return 0; /* success */
 }
 
+/*  TODO all this shit will HAVE to use semafors if it has to work */
+int ndmgm_create(int nlpid, char *name) {
+    int err = 0;
+    struct netdev_data *nddata = NULL;
+    printk(KERN_DEBUG "netdev_create: creating device \\dev\\%s%d\n",
+                        name,
+                        netdev_count);
+
+    if ( (nddata = ndmgm_alloc_data(nlpid, name)) == NULL ) {
+        printk(KERN_ERR "netdev_create: failed to create netdev_data\n");
+        return -ENOMEM;
+    }
+
+    cdev_init(nddata->cdev, &netdev_fops);
+    nddata->cdev->owner = THIS_MODULE;
+    nddata->cdev->dev = MKDEV(MAJOR(netdev_devno), netdev_count);
+
+    /* tell the kernel the cdev structure is ready,
+     * if it is not do not call cdev_add */
+    err = cdev_add(nddata->cdev, nddata->cdev->dev, 1);
+    printk(KERN_DEBUG "netdev_create: TEST!\n");
 
     /* Unlikely but might fail */
     if (unlikely(err)) {
