@@ -5,6 +5,8 @@
 #include <linux/module.h>   /* for THIS_MODULE */
 #include <linux/hashtable.h>
 #include <linux/rwsem.h>
+#include <linux/kfifo.h>
+#include <linux/slab.h>
 
 #include "protocol.h"
 
@@ -24,17 +26,22 @@ struct netdev_data {
     struct device *device;
     struct hlist_node hnode; /* to use with hastable */
     struct rw_semaphore sem; /* necessary since many threads can use this */
+    struct kfifo fo_queue; /* queue for file operations */
+    struct kmem_cache *queue_pool; /* pool of memory for fo_req structs */
     /* TODO
      * this struct will containt more data especially about host of the
      * device and device name, major, minor, and process pid of the server
      * that will be communicating through netlink */
 };
 
-int netdev_create(int nlpid, char *name);
-int netdev_destroy(int nlpid);
-int netdev_end(void);
-void netdev_prepare(void);
-struct netdev_data* netdev_find(int nlpid);
+struct netdev_data * ndmgm_alloc_data(int nlpid, char *name);
+int ndmgm_free_data(struct netdev_data *nddata);
+int ndmgm_create(int nlpid, char *name);
+int ndmgm_find_destroy(int nlpid);
+int ndmgm_destroy(struct netdev_data *nddata);
+int ndmgm_end(void);
+void ndmgm_prepare(void);
+struct netdev_data* ndmgm_find(int nlpid);
 
 #endif
 
