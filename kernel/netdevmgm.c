@@ -188,7 +188,7 @@ int netdev_destroy(int nlpid) {
     return 1;
 }
 
-int netdev_end(void) {
+int ndmgm_end(void) {
     int i = 0;
     struct netdev_data *nddata = NULL;
     struct hlist_node *tmp;
