@@ -117,7 +117,7 @@ int ndmgm_create(int nlpid, char *name) {
     /* Unlikely but might fail */
     if (unlikely(err)) {
         printk(KERN_ERR "Error %d adding netdev\n", err);
-        goto fail;
+        goto free_nddata;
     }
 
     nddata->device = device_create(netdev_class,
@@ -134,7 +134,7 @@ int ndmgm_create(int nlpid, char *name) {
                             err,
                             name,
                             netdev_count);
-       goto fail;
+       goto undo_cdev;
     }
 
     printk(KERN_DEBUG "netdev: new device: %d, %d\n",
