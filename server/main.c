@@ -11,6 +11,7 @@
 #include <netinet/in.h>     /* sockaddr_in */
 #include <netinet/ip.h>
 #include <signal.h>         /* signal */
+#include <sys/prctl.h>      /* prctl */
 
 #include "protocol.h"
 #include "signal.h"
@@ -52,15 +53,37 @@ int netlink_setup() {
     return sock_fd;
 }
 
+int netdev_unregister(void) {
+    return 0;
+}
+
 void sig_chld(int signo) {
     pid_t pid;
     int stat;
+    printf("sig_chld: received signal\n");
 
     while ( (pid = waitpid(-1, &stat, WNOHANG)) > 0 ) {
         /* TODO should not use printf in signal handling */
         printf("ALERT: child %d terminated\n", pid);
     }
 
+    return;
+}
+
+void sig_hup(int signo) {
+
+    printf("sig_hup: received signal from pid: %d\n", getpid());
+
+    if (netdev_unregister()) {
+        printf("sig_hup: failed to send unregister message\n");
+    }
+
+    return;
+}
+
+
+void sig_int(int signo) {
+    printf("sig_int: received signal from pid: %d\n", getpid());
     return;
 }
 
@@ -78,6 +101,13 @@ void netdev_client(char *name, char *address) {
     struct msghdr *p_msg; // needs to be global or a pointer
     int sock_fd = -1;
     int rvalue = 0;
+    int msgtype = 0;
+
+    /* send SIGHUP when parent process dies */
+    prctl(PR_SET_PDEATHSIG, SIGHUP);
+    /* and handle SIGHUP to close the connection */
+    signal(SIGHUP, sig_hup);
+    signal(SIGINT, sig_int);
 
     printf("Netlink protocol: %d\n", NETLINK_PROTOCOL);
     sock_fd = netlink_setup();
@@ -124,11 +154,21 @@ void netdev_client(char *name, char *address) {
         if (rvalue <= 0) {
             break;
         }
-        printf("Received message from pid: %d\
-                \n\ttype:\t%d\n\tpayload:\t%s\n",
-                p_nlh->nlmsg_pid,
-                p_nlh->nlmsg_type,
-                (char*)NLMSG_DATA(p_nlh));
+        msgtype = p_nlh->nlmsg_type;
+        
+        if (msgtype > MSGT_FO_START && msgtype < MSGT_FO_END ) {
+            printf("Received message from pid: %d\
+                    \n\ttype:\t%d\n\tpayload:\t%d\n",
+                    p_nlh->nlmsg_pid,
+                    p_nlh->nlmsg_type,
+                    *((int*)NLMSG_DATA(p_nlh)));
+        } else {
+            printf("Received message from pid: %d\
+                    \n\ttype:\t%d\n\tpayload:\t%s\n",
+                    p_nlh->nlmsg_pid,
+                    p_nlh->nlmsg_type,
+                    (char*)NLMSG_DATA(p_nlh));
+        }
     }
 
     close(sock_fd);
@@ -219,6 +259,7 @@ int netdev_listener() {
 
 int main(int argc, char *argv[]) {
     int pid;
+
     /* TODO these values will have to be read from a config file */
     if ( ( pid = fork() ) == 0 ) {
         netdev_client("netdev","192.168.1.13");
