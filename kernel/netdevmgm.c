@@ -66,19 +66,32 @@ free_nddata:
     return NULL;
 }
 
+int ndmgm_free_data(struct netdev_data *nddata) {
+    int size = 0;
+    struct fo_req *req = NULL;
 
-    printk(KERN_DEBUG "netdev_create: creating device \\dev\\%s%d\n",
-                        name,
-                        netdev_count);
+    /* destroy all requests in the queue */
+    while (kfifo_avail(&nddata->fo_queue)) {
+        size = kfifo_out(&nddata->fo_queue, &req, sizeof(struct fo_req *));
+        if ( size != sizeof(struct fo_req *) ) {
+            printk(KERN_ERR "netdev_destroy: failed to fetch from queue\n");
+            continue;
+        }
 
-    cdev_init(nddata->cdev, &netdev_fops);
-    nddata->cdev->owner = THIS_MODULE;
-    nddata->cdev->dev = MKDEV(MAJOR(netdev_devno), netdev_count);
+        req->rvalue = -ENODATA;
+        complete(&req->comp); /* complete all pending file operations */
 
-    /* tell the kernel the cdev structure is ready,
-     * if it is not do not call cdev_add */
-    err = cdev_add(nddata->cdev, nddata->cdev->dev, 1);
-    printk(KERN_DEBUG "netdev_create: TEST!\n");
+        kmem_cache_free(nddata->queue_pool, req);
+    }
+
+    kmem_cache_destroy(nddata->queue_pool);
+    kfifo_free(&nddata->fo_queue);
+    kfree(nddata->cdev);
+    kfree(nddata);
+
+    return 0; /* success */
+}
+
 
     /* Unlikely but might fail */
     if (unlikely(err)) {
