@@ -5,6 +5,7 @@
 #include "netlink.h"
 #include "netdevmgm.h"
 #include "protocol.h"
+#include "serial.h"
 
 struct sock *p_nl_sk = NULL;
 /* TODO this will have to be part of a struct that will contain information
@@ -56,8 +57,6 @@ void netlink_recv(struct sk_buff *p_skb) {
     struct nlmsghdr *p_nlh;
     short msgtype;
 
-    printk(KERN_INFO "netlink: Entering: %s\n", __FUNCTION__);
-
     p_nlh = (struct nlmsghdr*)p_skb->data;
 
     /* pid of sending process, also, port id */
@@ -79,10 +78,10 @@ void netlink_recv(struct sk_buff *p_skb) {
             case MSGT_CONTROL_VERSION:
                 break;
             case MSGT_CONTROL_REGISTER:
-                netdev_create(pid, "netdev");
+                ndmgm_create(pid, "netdev");
                 break;
             case MSGT_CONTROL_UNREGISTER:
-                netdev_destroy(pid);
+                ndmgm_find_destroy(pid);
                 break;
             case MSGT_CONTROL_RECOVER:
                 break;
@@ -117,6 +116,8 @@ int netlink_send(struct netdev_data *nddata, short msgtype, char *buff, size_t b
     int msg_size;
     int rvalue;
 
+    printk(KERN_DEBUG "netlink_send: nddata = %p\n", nddata);
+
     /* don't send anything if we don't have the pid yet,
      * should be impossible since first process needs to
      * register a device before it can send events */
@@ -127,10 +128,14 @@ int netlink_send(struct netdev_data *nddata, short msgtype, char *buff, size_t b
 
     if (msgtype == MSGT_CONTROL_ECHO) {
         p_msg = "ECHO";
+        msg_size = strlen(p_msg);
+    } else if (msgtype > MSGT_FO_START && msgtype < MSGT_FO_END) {
+        p_msg = buff;
+        msg_size = bufflen;
     } else {
-        p_msg = "Not implemented yet.";
+        p_msg = "Not yet implemented!";
+        msg_size = strlen(p_msg);
     }
-    msg_size = strlen(p_msg);
 
     p_skb_out = nlmsg_new(msg_size, 0);
 
@@ -139,6 +144,7 @@ int netlink_send(struct netdev_data *nddata, short msgtype, char *buff, size_t b
         goto skbfree;
     } 
     p_nlh = nlmsg_put(p_skb_out, 0, 0, msgtype, msg_size, 0);  
+    p_nlh->nlmsg_pid = nddata->nlpid;
 
     NETLINK_CB(p_skb_out).dst_group = 0; /* not in mcast group */
 
