@@ -149,9 +149,9 @@ int ndmgm_create(int nlpid, char *name) {
     return 1;
 undo_cdev:
     cdev_del(nddata->cdev);
-fail:
-    netdev_destroy(nlpid); /* TODO fix this shit */
-    return 0;
+free_nddata:
+    ndmgm_free_data(nddata);
+    return err;
 }
 
 int ndmgm_find_destroy(int nlpid) {
