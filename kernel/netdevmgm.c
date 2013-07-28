@@ -147,6 +147,8 @@ int ndmgm_create(int nlpid, char *name) {
     netdev_devices[MINOR(nddata->cdev->dev)] = nddata;
 
     return 1;
+undo_cdev:
+    cdev_del(nddata->cdev);
 fail:
     netdev_destroy(nlpid); /* TODO fix this shit */
     return 0;
@@ -217,8 +219,8 @@ int netdev_end(void) {
     return 1; /* failure */
 }
 
-void netdev_prepare(void) {
-    /* create and array for all drivices which will be indexed with 
+void ndmgm_prepare(void) {
+    /* create and array for all drivices which will be indexed with
      * minor numbers of those devices */
     netdev_devices = (struct netdev_data**)kcalloc(NETDEV_MAX_DEVICES,
                                             sizeof(struct netdev_data*),
@@ -229,7 +231,7 @@ void netdev_prepare(void) {
     netdev_count = 0;
 }
 
-struct netdev_data* netdev_find(int nlpid) {
+struct netdev_data* ndmgm_find(int nlpid) {
     struct netdev_data *nddata = NULL;
 
     if (down_read_trylock(&netdev_htable_sem)) {
