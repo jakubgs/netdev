@@ -172,18 +172,17 @@ int ndmgm_find_destroy(int nlpid) {
 int ndmgm_destroy(struct netdev_data *nddata) {
     if (nddata) {
         if (down_write_trylock(&nddata->sem)) {
+            nddata->active = false;
             device_destroy(netdev_class, nddata->cdev->dev);
             cdev_del(nddata->cdev);
-            /* kfree can take null as argument, no test needed */
-            kfree(nddata->cdev);
-            kfree(nddata);
-            
+
+            ndmgm_free_data(nddata);
+
             up_write(&nddata->sem);
-            return 0; /* success */
+            return 1; /* success */
         }
     }
-
-    return 1;
+    return 0; /* failure */
 }
 
 int ndmgm_end(void) {
