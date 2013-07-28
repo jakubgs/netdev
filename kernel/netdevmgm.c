@@ -196,21 +196,14 @@ int netdev_end(void) {
     if (down_write_trylock(&netdev_htable_sem)) {
         /* needs to be _safe so we can delete elements inside the loop */
         hash_for_each_safe(netdev_htable, i, tmp, nddata, hnode) {
-            printk(KERN_DEBUG "netdev_end: deleting dev pid = %d\n", 
+            printk(KERN_DEBUG "netdev_end: deleting dev pid = %d\n",
                                 nddata->nlpid);
             hash_del(&nddata->hnode); /* delete the element from table */
             netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
-            
-            if (nddata) {
-                if (down_write_trylock(&nddata->sem)) {
-                    device_destroy(netdev_class, nddata->cdev->dev);
-                    cdev_del(nddata->cdev);
-                    /* kfree can take null as argument, no test needed */
-                    kfree(nddata->cdev);
-                    kfree(nddata);
 
-                    up_write(&nddata->sem);
-                }
+            if (!ndmgm_destroy(nddata)) {
+                printk(KERN_ERR "netdev_end: failed to destroy nddata = %d\n",
+                                nddata->nlpid);
             }
         }
         up_write(&netdev_htable_sem);
