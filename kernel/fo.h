@@ -18,10 +18,10 @@ struct fo_req {
     struct completion  comp;     /* completion to release once reply arrives */
 };
 
-/* used for sending file operations converted by send_req functions to 
+/* used for sending file operations converted by send_req functions to
  * a buffer of certian size to the loop sending operations whtough netlink
  * to the server process */
-int send_fo (short fl_flag, struct netdev_data *, void *args, size_t size);
+int send_fo (short msgtype, struct netdev_data *, void *args, size_t size);
 
 /* file operation functions for file_operations structure */
 loff_t netdev_fo_llseek (struct file *flip, loff_t offset, int whence);
