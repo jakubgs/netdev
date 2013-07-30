@@ -82,14 +82,6 @@ int netlink_send(struct netdev_data *nddata, short msgtype, char *buff, size_t b
 
     printk(KERN_DEBUG "netlink_send: nddata = %p\n", nddata);
 
-    /* don't send anything if we don't have the pid yet,
-     * should be impossible since first process needs to
-     * register a device before it can send events */
-    if ( pid == 0 ) {
-        printk(KERN_ERR "netlink: wrong pid: %d\n", pid);
-        return -1;
-    }
-
     if (msgtype == MSGT_CONTROL_ECHO) {
         p_msg = "ECHO";
         msg_size = strlen(p_msg);
