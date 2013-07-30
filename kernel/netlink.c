@@ -18,12 +18,13 @@ void netlink_recv(struct sk_buff *p_skb) {
      * once the reply is assigned to appropriate variables in struct
      * describing one pending file operaion */
     struct nlmsghdr *p_nlh;
-    short msgtype;
+    int msgtype, seq;
 
     p_nlh = (struct nlmsghdr*)p_skb->data;
 
     /* pid of sending process, also, port id */
     pid     = p_nlh->nlmsg_pid;
+    seq     = p_nlh->nlmsg_seq;
     msgtype = p_nlh->nlmsg_type;
 
     printk(KERN_DEBUG "netlink: msg type: %d, from pid: %d\n", msgtype, pid);
@@ -36,7 +37,7 @@ void netlink_recv(struct sk_buff *p_skb) {
     if ( msgtype >= MSGT_CONTROL_START && msgtype < MSGT_CONTROL_END ) {
         switch (msgtype) {  /* handle the request */
             case MSGT_CONTROL_ECHO:
-                netlink_echo(pid, (char*)nlmsg_data(p_nlh));
+                netlink_echo(pid, seq, (char*)nlmsg_data(p_nlh));
                 break;
             case MSGT_CONTROL_VERSION:
                 break;
