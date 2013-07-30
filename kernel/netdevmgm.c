@@ -144,12 +144,12 @@ int ndmgm_create(int nlpid, char *name) {
     }
 
     nddata->device = device_create(netdev_class,
-                    NULL,              /* no aprent device           */
-                    nddata->cdev->dev, /* major and minor numbers    */
-                    nddata,            /* device data for callback   */
-                    "%s%d",            /* defines name of the device */
-                    name,
-                    netdev_count);
+                            NULL,              /* no aprent device           */
+                            nddata->cdev->dev, /* major and minor numbers    */
+                            nddata,            /* device data for callback   */
+                            "%s%d",            /* defines name of the device */
+                            name,
+                            MINOR(nddata->cdev->dev));
 
     if (IS_ERR(nddata->device)) {
        err = PTR_ERR(nddata->device);
@@ -234,8 +234,7 @@ int ndmgm_end(void) {
             netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
 
             if (!ndmgm_destroy(nddata)) {
-                printk(KERN_ERR "netdev_end: failed to destroy nddata = %d\n",
-                                nddata->nlpid);
+                printk(KERN_ERR "netdev_end: failed to destroy nddata\n");
             }
         }
         up_write(&netdev_htable_sem);
