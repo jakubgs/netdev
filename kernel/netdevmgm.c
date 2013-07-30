@@ -155,7 +155,7 @@ int ndmgm_create(int nlpid, char *name) {
        printk(KERN_WARNING "[target] Error %d while trying to name %s%d\n",
                             err,
                             name,
-                            netdev_count);
+                            MINOR(nddata->cdev->dev));
        goto undo_cdev;
     }
 
@@ -212,7 +212,6 @@ int ndmgm_destroy(struct netdev_data *nddata) {
                 return 0; /* failure */
             }
 
-            up_write(&nddata->sem);
             return 1; /* success */
         }
     }
