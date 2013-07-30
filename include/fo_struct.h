@@ -2,6 +2,7 @@
 #define _FO_STRUCT_H
 
 #include <linux/types.h>
+#include <linux/fs.h>
 
 /* structures used to pass file operation arguments to sending function */
 /* TODO add return values of functions as "rvalue" or something like that */
@@ -11,13 +12,13 @@ struct s_fo_llseek {
     loff_t rvalue;
 };
 struct s_fo_read {
-    char __user *data;
+    char *data;
     size_t size;
     loff_t *offset;
     ssize_t rvalue;
 };
 struct s_fo_write {
-    const char __user *data;
+    const char *data;
     size_t size;
     loff_t *offset;
     ssize_t rvalue;
