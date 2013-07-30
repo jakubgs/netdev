@@ -81,11 +81,12 @@ int ndmgm_free_queue(struct netdev_data *nddata) {
     struct fo_req *req = NULL;
 
     /* destroy all requests in the queue */
-    while (kfifo_avail(&nddata->fo_queue)) {
+    while (!kfifo_is_empty(&nddata->fo_queue)) {
+        printk(KERN_ERR "netdev_destroy: queue not emtpy\n");
         size = kfifo_out(&nddata->fo_queue, &req, sizeof(struct fo_req *));
         if ( size != sizeof(struct fo_req *) ) {
-            printk(KERN_ERR "netdev_destroy: failed to fetch from queue\n");
-            continue;
+            printk(KERN_ERR "netdev_destroy: failed to fetch from queue, size = %d\n", size);
+            return 0; /* failure */
         }
 
         req->rvalue = -ENODATA;
@@ -94,10 +95,8 @@ int ndmgm_free_queue(struct netdev_data *nddata) {
         kmem_cache_free(nddata->queue_pool, req);
     }
 
-    kmem_cache_destroy(nddata->queue_pool);
-    kfifo_free(&nddata->fo_queue);
-    kfree(nddata->cdev);
-    kfree(nddata);
+    return 1; /* success */
+}
 
 int ndmgm_incseq(struct netdev_data *nddata) {
     int seq = 0; /* failure */
