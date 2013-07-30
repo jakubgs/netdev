@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -g -Wall
 INCLUDE = -I../include
 DEPS = ../include/protocol.h
-OBJ = main.o
+OBJ = signal.o proxy.o main.o
 TARGET = server
 
 all: $(TARGET)
