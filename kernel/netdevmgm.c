@@ -55,6 +55,7 @@ struct netdev_data * ndmgm_alloc_data(int nlpid, char *name) {
     nddata->nlpid = nlpid;
     nddata->devname = name;
     nddata->active = true;
+    nddata->curseq = 0;
 
     return nddata;
 free_fo_queue:
@@ -89,7 +90,20 @@ int ndmgm_free_data(struct netdev_data *nddata) {
     kfree(nddata->cdev);
     kfree(nddata);
 
-    return 0; /* success */
+int ndmgm_incseq(struct netdev_data *nddata) {
+    int seq = 0; /* failure */
+
+    if (down_write_trylock(&nddata->sem)) {
+        seq = nddata->curseq++;
+
+        if ( seq == 0 ) { /* 0 is not a valide sequence number */
+            seq = nddata->curseq++;
+        }
+
+        up_write(&nddata->sem);
+    }
+
+    return seq;
 }
 
 /*  TODO all this shit will HAVE to use semafors if it has to work */
