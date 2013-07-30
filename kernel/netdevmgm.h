@@ -36,6 +36,7 @@ struct netdev_data {
 };
 
 struct netdev_data * ndmgm_alloc_data(int nlpid, char *name);
+int ndmgm_free_queue(struct netdev_data *nddata);
 int ndmgm_free_data(struct netdev_data *nddata);
 int ndmgm_incseq(struct netdev_data *nddata);
 int ndmgm_create(int nlpid, char *name);
