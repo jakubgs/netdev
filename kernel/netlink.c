@@ -42,7 +42,7 @@ void netlink_recv(struct sk_buff *p_skb) {
             case MSGT_CONTROL_VERSION:
                 break;
             case MSGT_CONTROL_REGISTER:
-                ndmgm_create(pid, "netdev");
+                ndmgm_create(pid, (char*)nlmsg_data(p_nlh)); /* TODO */
                 break;
             case MSGT_CONTROL_UNREGISTER:
                 ndmgm_find_destroy(pid);
