@@ -26,6 +26,7 @@ int send_fo (short msgtype, struct netdev_data *nddata, void *args, size_t size)
     req->args = args;
     req->size = size;
     init_completion(&req->comp);
+    printk(KERN_DEBUG "send_fo: size = %zu\n", req->size);
 
     buffer = kzalloc(req->size, GFP_KERNEL);
 
