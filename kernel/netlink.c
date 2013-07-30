@@ -5,7 +5,6 @@
 #include "netlink.h"
 #include "netdevmgm.h"
 #include "protocol.h"
-#include "serial.h"
 
 struct sock *p_nl_sk = NULL;
 /* TODO this will have to be part of a struct that will contain information
