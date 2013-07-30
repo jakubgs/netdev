@@ -97,10 +97,11 @@ int netlink_send(struct netdev_data *nddata, short msgtype, char *buff, size_t b
 
     if(!p_skb_out) {
         printk(KERN_ERR "netlink: failed to allocate new sk_buff!\n");
-        goto skbfree;
+        goto free_skb;
     } 
     p_nlh = nlmsg_put(p_skb_out, 0, 0, msgtype, msg_size, 0);  
     p_nlh->nlmsg_pid = nddata->nlpid;
+    p_nlh->nlmsg_flags = NLM_F_REQUEST;
 
     NETLINK_CB(p_skb_out).dst_group = 0; /* not in mcast group */
 
