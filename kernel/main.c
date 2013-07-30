@@ -33,7 +33,7 @@ static void netdev_cleanup(void) {
     /* free the major and minor numbers */
     unregister_chrdev_region(netdev_devno, dev_count);
 
-    printk(KERN_DEBUG "netdev: cleaned up after this device\n");
+    printk(KERN_DEBUG "netdev: driver cleanup finished\n");
 
     return;
 }
