@@ -20,6 +20,7 @@ extern struct netdev_data **netdev_devices; /* array with all devices */
 struct netdev_data {
     /* TODO might need to use uint32_t for the sake of network communication */
     unsigned int nlpid; /* pid of the process that created this device */
+    long curseq; /* last used sequence number for this device, 0 is not used */
     bool active; /* set to false if netlink connection is lost */
     char *devname; /* name of the device provided by the process */
     struct cdev *cdev; /* internat struct representing char devices */
@@ -36,6 +37,7 @@ struct netdev_data {
 
 struct netdev_data * ndmgm_alloc_data(int nlpid, char *name);
 int ndmgm_free_data(struct netdev_data *nddata);
+int ndmgm_incseq(struct netdev_data *nddata);
 int ndmgm_create(int nlpid, char *name);
 int ndmgm_find_destroy(int nlpid);
 int ndmgm_destroy(struct netdev_data *nddata);
