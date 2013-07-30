@@ -11,6 +11,7 @@
  * to be allocated fast and from a large pool since there will be a lot */
 struct fo_req {
     long               seq;      /* for synchronizing netlink messages       */
+    short              msgtype;  /* type of file operation */
     void              *args;     /* place for s_fo_OPERATION structures      */
     size_t             size;     /* size of the s_fo_OPERATION structure     */
     int                rvalue;   /* informs about success of failure of fo   */
