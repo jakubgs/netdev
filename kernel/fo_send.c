@@ -10,7 +10,7 @@
  * to the server process */
 /* TODO might require a struct that will also hold the wait queue to unblock waiting
  * send_req function once receiving loop gets the response */
-int send_fo (short fl_flag, struct netdev_data *nddata, void *args, size_t size) {
+int send_fo (short msgtype, struct netdev_data *nddata, void *args, size_t size) {
     int rvalue = 0;
     void *buffer = NULL;
     struct fo_req *req = NULL;
