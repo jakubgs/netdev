@@ -22,6 +22,7 @@ int send_fo (short msgtype, struct netdev_data *nddata, void *args, size_t size)
         return -ENOMEM;
     }
 
+    req->msgtype = msgtype;
     req->args = args;
     req->size = size;
     init_completion(&req->comp);
@@ -39,7 +40,7 @@ int send_fo (short msgtype, struct netdev_data *nddata, void *args, size_t size)
     /* add the req to a queue of requests */
     kfifo_in(&nddata->fo_queue, req, sizeof(*req)); /* TODO semaphore */
 
-    netlink_send(nddata, fl_flag, buffer, req->size);
+    netlink_send_fo(nddata, req);
 
     /* wait for completion, it will be signaled once a reply is received */
     wait_for_completion(&req->comp);
