@@ -68,6 +68,15 @@ free_nddata:
 }
 
 int ndmgm_free_data(struct netdev_data *nddata) {
+    kmem_cache_destroy(nddata->queue_pool);
+    kfifo_free(&nddata->fo_queue);
+    kfree(nddata->cdev);
+    kfree(nddata);
+
+    return 1; /* success */
+}
+
+int ndmgm_free_queue(struct netdev_data *nddata) {
     int size = 0;
     struct fo_req *req = NULL;
 
@@ -187,10 +196,22 @@ int ndmgm_destroy(struct netdev_data *nddata) {
     if (nddata) {
         if (down_write_trylock(&nddata->sem)) {
             nddata->active = false;
+
+            /* first make sure all pending operations are completed */
+            if (!ndmgm_free_queue(nddata)) {
+                printk(KERN_ERR "ndmgm_destroy: failed to free queue\n");
+                return 0; /* failure */
+            }
+
             device_destroy(netdev_class, nddata->cdev->dev);
             cdev_del(nddata->cdev);
 
-            ndmgm_free_data(nddata);
+            up_write(&nddata->sem); /* has to be unlocked before we free it */
+
+            if (!ndmgm_free_data(nddata)) {
+                printk(KERN_ERR "ndmgm_destroy: failed to free nddata\n");
+                return 0; /* failure */
+            }
 
             up_write(&nddata->sem);
             return 1; /* success */
