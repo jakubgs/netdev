@@ -27,12 +27,15 @@
 /* define type of message for netlink driver control,
  * will be used in nlmsghdr->nlmsg_type */
 #define MSGT_CONTROL_ECHO         1 /* test to check if diver works */
-#define MSGT_CONTROL_VERSION      2 /* check if driver is compatible */
-#define MSGT_CONTROL_REGISTER     3 /* register a new device */
-#define MSGT_CONTROL_UNREGISTER   4 /* unregister the device */
-#define MSGT_CONTROL_RECOVER      5 /* recover a device after lost conn. */
-#define MSGT_CONTROL_DRIVER_STOP  6 /* close all devices and stop driver */
-#define MSGT_CONTROL_LOSTCONN     7 /* lost connection with other end */
+#define MSGT_CONTROL_SUCCESS      2 /* test to check if diver works */
+#define MSGT_CONTROL_FAILURE      3 /* test to check if diver works */
+#define MSGT_CONTROL_VERSION      4 /* check if driver is compatible */
+#define MSGT_CONTROL_REG_DUMMY    5 /* register a new device */
+#define MSGT_CONTROL_REG_SERVER   6 /* register a new device */
+#define MSGT_CONTROL_UNREGISTER   7 /* unregister the device */
+#define MSGT_CONTROL_RECOVER      8 /* recover a device after lost conn. */
+#define MSGT_CONTROL_DRIVER_STOP  9 /* close all devices and stop driver */
+#define MSGT_CONTROL_LOSTCONN     10 /* lost connection with other end */
 
 /* limit of control messsages */
 #define MSGT_CONTROL_START        0
