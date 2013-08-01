@@ -36,15 +36,15 @@ struct netdev_data {
 };
 
 struct netdev_data * ndmgm_alloc_data(int nlpid, char *name);
+struct netdev_data * ndmgm_create(int nlpid, char *name);
+struct netdev_data * ndmgm_find(int nlpid);
 int ndmgm_free_queue(struct netdev_data *nddata);
 int ndmgm_free_data(struct netdev_data *nddata);
 int ndmgm_incseq(struct netdev_data *nddata);
-int ndmgm_create(int nlpid, char *name);
 int ndmgm_find_destroy(int nlpid);
 int ndmgm_destroy(struct netdev_data *nddata);
 int ndmgm_end(void);
 void ndmgm_prepare(void);
-struct netdev_data* ndmgm_find(int nlpid);
 
 #endif
 
