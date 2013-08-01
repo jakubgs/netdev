@@ -81,10 +81,8 @@ void netlink_create_dummy(int pid, int seq, char *buff, size_t bsize) {
     }
 }
 
-    return 0; /* success */
-free_skb:
-    nlmsg_free(p_skb_out);
-    return -1;
+int netlink_ackmsg(struct netdev_data *nddata, int seq, short msgtype) {
+    return netlink_send(nddata, seq, msgtype, NLM_F_ACK, NULL, 0);
 }
 
 int netlink_send(struct netdev_data *nddata, int seq, short msgtype, int flags, char *buff, size_t bufflen) {
