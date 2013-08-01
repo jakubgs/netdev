@@ -29,6 +29,7 @@ void netlink_recv(struct sk_buff *skb) {
 
     printk(KERN_DEBUG "netlink: msg type: %d, from pid: %d\n", msgtype, pid);
     printk(KERN_DEBUG "netlink: msg size: %d, message: %s\n", nlh->nlmsg_len, (char*)nlmsg_data(nlh));
+    if ( pid == 0 ) { /* message from kernel to kernel, disregard */
         printk(KERN_ERR "netlink: received message from kernel, pid: %d\n", pid);
         return;
     }
@@ -48,7 +49,7 @@ void netlink_recv(struct sk_buff *skb) {
                 /* TODO create a netdev_data for real device */
                 break;
             case MSGT_CONTROL_UNREGISTER:
-                ndmgm_find_destroy(pid);
+                err = ndmgm_find_destroy(pid);
                 break;
             case MSGT_CONTROL_RECOVER:
                 break;
@@ -72,20 +73,12 @@ void netlink_recv(struct sk_buff *skb) {
         printk(KERN_DEBUG "netlink: unknown message type: %d\n",
                             msgtype);
     }
-}
 
-void netlink_create_dummy(int pid, int seq, char *buff, size_t bsize) {
-    struct netdev_data *nddata = NULL;
-
-    if ((nddata = ndmgm_create(pid, buff)) == NULL ) {
-        if (!netlink_ackmsg(nddata, seq, MSGT_CONTROL_REG_DUMMY)) {
-            printk(KERN_ERR "netlink_create_dummy: failed to send ack\n");
-        }
+    /* if error or if this message says it wants a response */
+    if ( err || (nlh->nlmsg_flags & NLM_F_ACK )) {
+        printk(KERN_DEBUG "netlink_recv: confirmation, err = %d\n", err);
+        netlink_ack(skb, nlh, err); /* err should be 0 when no error */
     }
-}
-
-int netlink_ackmsg(struct netdev_data *nddata, int seq, short msgtype) {
-    return netlink_send(nddata, seq, msgtype, NLM_F_ACK, NULL, 0);
 }
 
 int netlink_send(struct netdev_data *nddata, int seq, short msgtype, int flags, char *buff, size_t bufflen) {
@@ -112,7 +105,7 @@ int netlink_send(struct netdev_data *nddata, int seq, short msgtype, int flags, 
                     seq,
                     msgtype,
                     bufflen,
-                    NLM_F_REQUEST);
+                    flags | NLM_F_ACK); /* for delivery confirmation */
 
     NETLINK_CB(skb_out).dst_group = 0; /* not in mcast group */
 
