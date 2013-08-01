@@ -146,7 +146,6 @@ int netdev_listener() {
         perror("netdev_listener: failed to create socket");
         return -1;
     }
-    printf("netdev_listener: listenfd = %d\n", listenfd);
 
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
@@ -168,9 +167,6 @@ int netdev_listener() {
         perror("netdev_listener: failed to listen");
         return -1;
     }
-
-    /* na potrzbey waitpid */
-    signal(SIGCHLD, sig_chld);
 
     printf("netdev_listener: starting listener\n");
     while (1) {
@@ -201,11 +197,10 @@ int netdev_listener() {
              * this process won't use it */
             close(listenfd);
 
-            rvalue = netdev_server(connfd);
-            if ( rvalue < 0 ) {
-                perror("netdev_listener: server process failed");
-            }
+            proxy_server(connfd);
 
+            /* close the socket completely */
+            close(listenfd);
             exit(0);
         }
 
