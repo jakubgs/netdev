@@ -200,7 +200,7 @@ int netdev_listener() {
             proxy_server(connfd);
 
             /* close the socket completely */
-            close(listenfd);
+            close(connfd);
             exit(0);
         }
 
