@@ -41,8 +41,8 @@ void netlink_recv(struct sk_buff *p_skb) {
                 break;
             case MSGT_CONTROL_VERSION:
                 break;
-            case MSGT_CONTROL_REGISTER:
-                ndmgm_create(pid, (char*)nlmsg_data(p_nlh)); /* TODO */
+            case MSGT_CONTROL_REG_DUMMY:
+                netlink_create_dummy(pid, seq, (char*)nlmsg_data(p_nlh), p_nlh->nlmsg_len);
                 break;
             case MSGT_CONTROL_UNREGISTER:
                 ndmgm_find_destroy(pid);
@@ -71,49 +71,15 @@ void netlink_recv(struct sk_buff *p_skb) {
     }
 }
 
-int netlink_send(struct netdev_data *nddata, short msgtype, char *buff, size_t bufflen) {
-    /* TODO should receive not only msgtype but also a buffer with
-     * properly formatted arguments from netdev_fo_OP_send_req */
-    struct nlmsghdr *p_nlh;
-    struct sk_buff *p_skb_out;
-    char *p_msg;
-    int msg_size;
-    int rvalue;
+void netlink_create_dummy(int pid, int seq, char *buff, size_t bsize) {
+    struct netdev_data *nddata = NULL;
 
-    printk(KERN_DEBUG "netlink_send: nddata = %p\n", nddata);
-
-    if (msgtype == MSGT_CONTROL_ECHO) {
-        p_msg = "ECHO";
-        msg_size = strlen(p_msg);
-    } else if (msgtype > MSGT_FO_START && msgtype < MSGT_FO_END) {
-        p_msg = buff;
-        msg_size = bufflen;
-    } else {
-        p_msg = "Not yet implemented!";
-        msg_size = strlen(p_msg);
+    if ((nddata = ndmgm_create(pid, buff)) == NULL ) {
+        if (!netlink_ackmsg(nddata, seq, MSGT_CONTROL_REG_DUMMY)) {
+            printk(KERN_ERR "netlink_create_dummy: failed to send ack\n");
+        }
     }
-
-    p_skb_out = nlmsg_new(msg_size, 0);
-
-    if(!p_skb_out) {
-        printk(KERN_ERR "netlink: failed to allocate new sk_buff!\n");
-        goto free_skb;
-    } 
-    p_nlh = nlmsg_put(p_skb_out, 0, 0, msgtype, msg_size, 0);  
-    p_nlh->nlmsg_pid = nddata->nlpid;
-    p_nlh->nlmsg_flags = NLM_F_REQUEST;
-
-    NETLINK_CB(p_skb_out).dst_group = 0; /* not in mcast group */
-
-    strncpy(nlmsg_data(p_nlh) ,p_msg ,msg_size);
-    
-    /* send messsage,nlmsg_unicast will take care of freeing p_skb_out */
-    rvalue = nlmsg_unicast(p_nl_sk, p_skb_out, pid);
-
-    if( rvalue > 0 ) {
-        printk(KERN_INFO "Error while sending bak to user\n");
-        return -1;
-    }
+}
 
     return 0; /* success */
 free_skb:
@@ -121,53 +87,54 @@ free_skb:
     return -1;
 }
 
-int netlink_send_fo(struct netdev_data *nddata, struct fo_req *req) {
+int netlink_send(struct netdev_data *nddata, int seq, short msgtype, int flags, char *buff, size_t bufflen) {
     /* TODO should receive not only msgtype but also a buffer with
      * properly formatted arguments from netdev_fo_OP_send_req */
     struct nlmsghdr *p_nlh;
     struct sk_buff *p_skb_out;
     int rvalue;
 
+    printk(KERN_DEBUG "netlink_send: nddata->nlpid = %d\n", nddata->nlpid);
+
     /* allocate space for message header and it's payload */
-    p_skb_out = nlmsg_new(req->size, GFP_KERNEL);
+    p_skb_out = nlmsg_new(bufflen, GFP_KERNEL);
 
     if(!p_skb_out) {
         printk(KERN_ERR "netlink: failed to allocate new sk_buff!\n");
         goto free_skb;
     } 
 
-    /* increment the sequence number */
-    if (!(req->seq = ndmgm_incseq(nddata))) {
-        printk(KERN_ERR "netlink_send_fo: failed to increment sequence number\n");
-        goto free_skb;
-    }
-
     /* set pid, seq, message type, payload size and flags */
     p_nlh = nlmsg_put(
                     p_skb_out,
                     nddata->nlpid,
-                    req->seq,
-                    req->msgtype,
-                    req->size,
+                    seq,
+                    msgtype,
+                    bufflen,
                     NLM_F_REQUEST);
 
     NETLINK_CB(p_skb_out).dst_group = 0; /* not in mcast group */
 
-    /* copy data to head of message payload */
-    strncpy(nlmsg_data(p_nlh) ,req->args ,req->size);
+    if (!buff) {
+        /* copy data to head of message payload */
+        memcpy(nlmsg_data(p_nlh) ,buff ,bufflen);
+    }
     
     /* send messsage,nlmsg_unicast will take care of freeing p_skb_out */
-    rvalue = nlmsg_unicast(p_nl_sk, p_skb_out, pid);
+    rvalue = nlmsg_unicast(p_nl_sk, p_skb_out, nddata->nlpid);
 
     if( rvalue > 0 ) {
         printk(KERN_INFO "Error while sending bak to user\n");
-        return 0;
+        return 0; /* failure */
     }
 
     return 1; /* success */
+
 free_skb:
     nlmsg_free(p_skb_out);
     return 0;
+}
+
 }
 
 int netlink_echo(int pid, int seq, char *p_msg) {
