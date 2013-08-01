@@ -124,7 +124,7 @@ int ndmgm_create(int nlpid, char *name) {
 
     if ( (nddata = ndmgm_alloc_data(nlpid, name)) == NULL ) {
         printk(KERN_ERR "netdev_create: failed to create netdev_data\n");
-        return NULL;
+        return 1;
     }
 
     cdev_init(nddata->cdev, &netdev_fops);
