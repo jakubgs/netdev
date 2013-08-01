@@ -1,8 +1,8 @@
 CC = gcc
 CFLAGS = -g -Wall
-INCLUDE = -I../include
+INCLUDE = -I../include -I./lib
 DEPS = ../include/protocol.h
-OBJ = signal.o proxy.o main.o
+OBJ = netlink.o conn.o signal.o proxy.o main.o
 TARGET = server
 
 all: $(TARGET)
