@@ -20,7 +20,7 @@ void netlink_recv(struct sk_buff *skb) {
     struct nlmsghdr *nlh;
     int msgtype, seq, err = 0;
 
-    p_nlh = (struct nlmsghdr*)p_skb->data;
+    nlh = nlmsg_hdr(skb);
 
     /* pid of sending process, also, port id */
     pid     = nlh->nlmsg_pid;
