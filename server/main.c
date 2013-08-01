@@ -230,5 +230,5 @@ int main(int argc, char *argv[]) {
         printf("netdev: could not start listener\n");
     }
 
-    return 1;
+    return 0;
 }
