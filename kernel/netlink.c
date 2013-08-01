@@ -135,6 +135,14 @@ free_skb:
     return 0;
 }
 
+int netlink_send_fo(struct netdev_data *nddata, struct fo_req *req) {
+    /* increment the sequence number */
+    if (!(req->seq = ndmgm_incseq(nddata))) {
+        printk(KERN_ERR "netlink_send_fo: failed to increment sequence number\n");
+        return 0; /* failure */
+    }
+
+    return netlink_send(nddata, req->seq, req->msgtype, NLM_F_REQUEST, req->args, req->size);
 }
 
 int netlink_echo(int pid, int seq, char *p_msg) {
