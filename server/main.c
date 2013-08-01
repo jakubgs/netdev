@@ -14,13 +14,13 @@
 #include "proxy.h"
 #include "protocol.h"
 
-void sig_chld(int signo) {
+void parent_sig_chld(int signo) {
     pid_t pid;
     int stat;
     printf("sig_chld: received signal\n");
 
     while ( (pid = waitpid(-1, &stat, WNOHANG)) > 0 ) {
-        /* TODO should not use printf in signal handling */
+        /* TODO should't use printf in signal handling */
         printf("ALERT: child %d terminated\n", pid);
     }
 
