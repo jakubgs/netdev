@@ -246,17 +246,25 @@ struct proxy_dev ** read_config(char *filename, int *count) {
 }
 
 int main(int argc, char *argv[]) {
-    int pid;
+    int pid, dev_count, i;
+    struct proxy_dev **pdevs = NULL;
 
-    /* TODO these values will have to be read from a config file */
-    if ( ( pid = fork() ) == 0 ) {
-        netdev_client("netdev","192.168.1.13");
-        exit(0);
-    } else if ( pid < 0 ) {
-        perror("main: failed to fork");
+    if (!(pdevs = read_config(NULL, &dev_count))) {
+        return 1;
     }
 
-    /* TODO start netdev listener wiating for connections from clients */
+    /* to run waitpid for all forked proxies */
+    signal(SIGCHLD, parent_sig_chld);
+
+    for ( i = 0 ; i < dev_count ; i++ ) {
+        if ( ( pid = fork() ) == 0 ) {
+            proxy_client(pdevs[i]);
+            exit(0);
+        } else if ( pid < 0 ) {
+            perror("main: failed to fork");
+        }
+    }
+
     if ( netdev_listener() ) {
         printf("netdev: could not start listener\n");
     }
