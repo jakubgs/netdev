@@ -14,47 +14,6 @@
 #include "proxy.h"
 #include "protocol.h"
 
-#define MAX_PAYLOAD 1024 /* maximum payload size*/
-
-int netlink_setup() {
-    struct sockaddr_nl *p_src_addr;
-    int sock_fd = -1;
-    int rvalue = 0;
-
-    /* create socket for netlink
-     * int socket(int domain, int type, int protocol); */
-    sock_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_PROTOCOL);
-
-    /* check if socket was actually created */
-    if ( sock_fd < 0 ) {
-        perror("socket error");
-        return -1;
-    }
-
-    p_src_addr = (struct sockaddr_nl *)malloc(sizeof(*p_src_addr));
-    memset(p_src_addr, 0, sizeof(*p_src_addr));
-    p_src_addr->nl_family = AF_NETLINK;
-    p_src_addr->nl_pid = getpid(); /* self pid */
-
-    /* p_src_addr has to be casted to (struct sockaddr*) for compatibility
-     * with IPv4 and IPv6 structures, sockaddr_in and sockaddr_in6. */
-    rvalue = bind(sock_fd,
-                (SA *)p_src_addr,
-                sizeof(*p_src_addr));
-
-    if ( rvalue < 0 ) {
-        perror("socket error");
-        return -1;
-    }
-
-    /* connect is not needed since we are not using TCP but a raw socket */
-    return sock_fd;
-}
-
-int netdev_unregister(void) {
-    return 0;
-}
-
 void sig_chld(int signo) {
     pid_t pid;
     int stat;
