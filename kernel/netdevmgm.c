@@ -207,10 +207,7 @@ int ndmgm_destroy(struct netdev_data *nddata) {
 
             up_write(&nddata->sem); /* has to be unlocked before we free it */
 
-            if (!ndmgm_free_data(nddata)) {
-                printk(KERN_ERR "ndmgm_destroy: failed to free nddata\n");
-                return 0; /* failure */
-            }
+            ndmgm_free_data(nddata); /* finally free netdev_data */
 
             return 1; /* success */
         }
