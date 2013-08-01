@@ -115,7 +115,7 @@ int ndmgm_incseq(struct netdev_data *nddata) {
 }
 
 /*  TODO all this shit will HAVE to use semafors if it has to work */
-int ndmgm_create(int nlpid, char *name) {
+struct netdev_data * ndmgm_create(int nlpid, char *name) {
     int err = 0;
     struct netdev_data *nddata = NULL;
     printk(KERN_DEBUG "netdev_create: creating device \\dev\\%s%d\n",
@@ -124,7 +124,7 @@ int ndmgm_create(int nlpid, char *name) {
 
     if ( (nddata = ndmgm_alloc_data(nlpid, name)) == NULL ) {
         printk(KERN_ERR "netdev_create: failed to create netdev_data\n");
-        return -ENOMEM;
+        return NULL;
     }
 
     cdev_init(nddata->cdev, &netdev_fops);
@@ -168,12 +168,12 @@ int ndmgm_create(int nlpid, char *name) {
     hash_add(netdev_htable, &nddata->hnode, (int)nlpid);
     netdev_devices[MINOR(nddata->cdev->dev)] = nddata;
 
-    return 1;
+    return nddata;
 undo_cdev:
     cdev_del(nddata->cdev);
 free_nddata:
     ndmgm_free_data(nddata);
-    return err;
+    return NULL;
 }
 
 int ndmgm_find_destroy(int nlpid) {
