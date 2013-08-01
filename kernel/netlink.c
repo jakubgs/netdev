@@ -44,6 +44,9 @@ void netlink_recv(struct sk_buff *p_skb) {
             case MSGT_CONTROL_REG_DUMMY:
                 netlink_create_dummy(pid, seq, (char*)nlmsg_data(p_nlh), p_nlh->nlmsg_len);
                 break;
+            case MSGT_CONTROL_REG_SERVER:
+                /* TODO create a netdev_data for real device */
+                break;
             case MSGT_CONTROL_UNREGISTER:
                 ndmgm_find_destroy(pid);
                 break;
