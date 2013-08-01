@@ -214,6 +214,37 @@ int netdev_listener() {
     }
 }
 
+struct proxy_dev ** read_config(char *filename, int *count) {
+    struct proxy_dev **pdevs = NULL;
+    int i = 0;
+    *count = 1;
+
+    pdevs = malloc(*count * sizeof(struct proxy_dev*));
+
+    if (!pdevs) {
+        perror("read_config: failed to allocate pdevs");
+        return NULL; /* failure */
+    }
+
+    /* allocate memory for all structures and then zero out elements
+     * of the array because we are using motherfucking C */
+    for ( i = 0;  i < *count ;  i++) {
+        pdevs[i] = malloc(sizeof(struct proxy_dev));
+        memset(pdevs[i], 0, sizeof(struct proxy_dev));
+    }
+
+    /* TODO this should read data from a config files and fill
+     * pdev structures based on that */
+    pdevs[0]->rm_ipaddr = "192.168.1.2";
+    pdevs[0]->rm_portaddr = NETDEV_SERVER_PORT;
+    pdevs[0]->remote_dev_name = "urandom";
+    pdevs[0]->remote_major = 1;
+    pdevs[0]->remote_minor = 9;
+    pdevs[0]->dummy_dev_name = "netdev";
+
+    return pdevs; /* success */
+}
+
 int main(int argc, char *argv[]) {
     int pid;
 
