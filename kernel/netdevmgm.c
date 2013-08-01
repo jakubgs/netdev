@@ -96,6 +96,8 @@ int ndmgm_free_queue(struct netdev_data *nddata) {
     return 0; /* success */
 }
 
+/* this function safely increases the current sequence number and returns it,
+ * 0 value is restricted since it's used to indicate failure */
 int ndmgm_incseq(struct netdev_data *nddata) {
     int seq = 0; /* failure */
 
