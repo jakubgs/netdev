@@ -67,13 +67,11 @@ free_nddata:
     return NULL;
 }
 
-int ndmgm_free_data(struct netdev_data *nddata) {
+void ndmgm_free_data(struct netdev_data *nddata) {
     kmem_cache_destroy(nddata->queue_pool);
     kfifo_free(&nddata->fo_queue);
     kfree(nddata->cdev);
     kfree(nddata);
-
-    return 1; /* success */
 }
 
 int ndmgm_free_queue(struct netdev_data *nddata) {
@@ -115,7 +113,7 @@ int ndmgm_incseq(struct netdev_data *nddata) {
 }
 
 /*  TODO all this shit will HAVE to use semafors if it has to work */
-struct netdev_data * ndmgm_create(int nlpid, char *name) {
+int ndmgm_create(int nlpid, char *name) {
     int err = 0;
     struct netdev_data *nddata = NULL;
     printk(KERN_DEBUG "netdev_create: creating device \\dev\\%s%d\n",
@@ -134,7 +132,6 @@ struct netdev_data * ndmgm_create(int nlpid, char *name) {
     /* tell the kernel the cdev structure is ready,
      * if it is not do not call cdev_add */
     err = cdev_add(nddata->cdev, nddata->cdev->dev, 1);
-    printk(KERN_DEBUG "netdev_create: TEST!\n");
 
     /* Unlikely but might fail */
     if (unlikely(err)) {
@@ -168,12 +165,12 @@ struct netdev_data * ndmgm_create(int nlpid, char *name) {
     hash_add(netdev_htable, &nddata->hnode, (int)nlpid);
     netdev_devices[MINOR(nddata->cdev->dev)] = nddata;
 
-    return nddata;
+    return 0; /* success */
 undo_cdev:
     cdev_del(nddata->cdev);
 free_nddata:
     ndmgm_free_data(nddata);
-    return NULL;
+    return err;
 }
 
 int ndmgm_find_destroy(int nlpid) {
