@@ -86,7 +86,7 @@ int ndmgm_free_queue(struct netdev_data *nddata) {
         size = kfifo_out(&nddata->fo_queue, &req, sizeof(struct fo_req *));
         if ( size != sizeof(struct fo_req *) ) {
             printk(KERN_ERR "netdev_destroy: failed to fetch from queue, size = %d\n", size);
-            return 0; /* failure */
+            return 1; /* failure */
         }
 
         req->rvalue = -ENODATA;
@@ -95,7 +95,7 @@ int ndmgm_free_queue(struct netdev_data *nddata) {
         kmem_cache_free(nddata->queue_pool, req);
     }
 
-    return 1; /* success */
+    return 0; /* success */
 }
 
 int ndmgm_incseq(struct netdev_data *nddata) {
@@ -197,9 +197,9 @@ int ndmgm_destroy(struct netdev_data *nddata) {
             nddata->active = false;
 
             /* first make sure all pending operations are completed */
-            if (!ndmgm_free_queue(nddata)) {
+            if (ndmgm_free_queue(nddata)) {
                 printk(KERN_ERR "ndmgm_destroy: failed to free queue\n");
-                return 0; /* failure */
+                return 1; /* failure */
             }
 
             device_destroy(netdev_class, nddata->cdev->dev);
@@ -209,10 +209,10 @@ int ndmgm_destroy(struct netdev_data *nddata) {
 
             ndmgm_free_data(nddata); /* finally free netdev_data */
 
-            return 1; /* success */
+            return 0; /* success */
         }
     }
-    return 0; /* failure */
+    return 1; /* failure */
 }
 
 int ndmgm_end(void) {
@@ -228,7 +228,7 @@ int ndmgm_end(void) {
             hash_del(&nddata->hnode); /* delete the element from table */
             netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
 
-            if (!ndmgm_destroy(nddata)) {
+            if (ndmgm_destroy(nddata)) {
                 printk(KERN_ERR "netdev_end: failed to destroy nddata\n");
             }
         }
