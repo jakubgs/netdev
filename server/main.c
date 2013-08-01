@@ -1,20 +1,18 @@
 #include <string.h>        /* memset, memcopy, memmove, memcmp */
-#include <unistd.h>        /* close                            */
-#include <stdlib.h>        /* malloc                           */
 #include <stdio.h>         /* printf                           */
+#include <stdlib.h>        /* malloc                           */
+#include <unistd.h>        /* close, getpid                    */
 #include <sys/socket.h>    /* socklen_t */
-#include <sys/wait.h>      /* waitpid                          */
 #include <sys/types.h>     /* pid_t                            */
+#include <sys/wait.h>      /* waitpid */
+#include <arpa/inet.h>      /* inet_notp */
 #include <errno.h>
-#include <linux/netlink.h>
-#include <arpa/inet.h>      /* sockaddr_in */
-#include <netinet/in.h>     /* sockaddr_in */
 #include <netinet/ip.h>
 #include <signal.h>         /* signal */
-#include <sys/prctl.h>      /* prctl */
 
-#include "protocol.h"
 #include "signal.h"
+#include "proxy.h"
+#include "protocol.h"
 
 #define MAX_PAYLOAD 1024 /* maximum payload size*/
 
