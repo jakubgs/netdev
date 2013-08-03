@@ -1,8 +1,10 @@
 #ifndef _FO_H
 #define _FO_H
 
+#include <linux/skbuff.h>
 #include <linux/types.h>
 #include <linux/fs.h>
+#include <linux/netlink.h>  /* for netlink sockets */
 #include <linux/completion.h>
 
 #include "netdevmgm.h"
@@ -21,7 +23,10 @@ struct fo_req {
 /* used for sending file operations converted by send_req functions to
  * a buffer of certian size to the loop sending operations whtough netlink
  * to the server process */
-int send_fo (short msgtype, struct netdev_data *, void *args, size_t size);
+int fo_send(short msgtype, struct netdev_data *, void *args, size_t size);
+int fo_recv(struct sk_buff *skb);
+int fo_complete(struct netdev_data *nddata, struct nlmsghdr *nlh, struct sk_buff *skb);
+int fo_execute(void *data);
 
 /* file operation functions for file_operations structure */
 loff_t netdev_fo_llseek (struct file *flip, loff_t offset, int whence);
