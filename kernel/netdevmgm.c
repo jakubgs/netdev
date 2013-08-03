@@ -9,7 +9,8 @@ static struct rw_semaphore netdev_htable_sem;
 unsigned int netdev_count;
 struct netdev_data **netdev_devices;
 
-struct netdev_data * ndmgm_alloc_data(int nlpid, char *name) {
+struct netdev_data * ndmgm_alloc_data(int nlpid, char *name)
+{
     int err = 0;
     struct netdev_data *nddata; /* TODO needs to be in a list */
 
@@ -24,15 +25,19 @@ struct netdev_data * ndmgm_alloc_data(int nlpid, char *name) {
     /* GFP_KERNEL means this function can be blocked,
      * so it can't be part of an atomic operation.
      * For that GFP_ATOMIC would have to be used. */
-    nddata = (struct netdev_data *) kzalloc(
-                                sizeof(struct netdev_data), GFP_KERNEL);
+    nddata = kzalloc(sizeof(struct netdev_data), GFP_KERNEL);
     if (!nddata) {
         printk(KERN_ERR "netdev_create: failed to allocate nddata\n");
         return NULL;
     }
 
-    nddata->cdev = (struct cdev *) kzalloc(
-                                sizeof(struct cdev), GFP_KERNEL);
+    nddata->devname = kzalloc(strlen(name), GFP_KERNEL);
+    if (!nddata->devname) {
+        printk(KERN_ERR "netdev_create: failed to allocate nddata\n");
+        goto free_devname;
+    }
+
+    nddata->cdev = kzalloc(sizeof(struct cdev), GFP_KERNEL);
     if (!nddata->cdev) {
         printk(KERN_ERR "netdev_create: failed to allocate nddata->cdev\n");
         goto free_nddata;
@@ -52,8 +57,8 @@ struct netdev_data * ndmgm_alloc_data(int nlpid, char *name) {
     }
 
     init_rwsem(&nddata->sem);
+    sprintf(nddata->devname, "/dev/%s%d", name, netdev_count);
     nddata->nlpid = nlpid;
-    nddata->devname = name;
     nddata->active = true;
     nddata->curseq = 0;
 
@@ -62,19 +67,24 @@ free_fo_queue:
     kfifo_free(&nddata->fo_queue);
 free_cdev:
     kfree(nddata->cdev);
+free_devname:
+    kfree(nddata->devname);
 free_nddata:
     kfree(nddata);
     return NULL;
 }
 
-void ndmgm_free_data(struct netdev_data *nddata) {
+void ndmgm_free_data(struct netdev_data *nddata)
+{
     kmem_cache_destroy(nddata->queue_pool);
     kfifo_free(&nddata->fo_queue);
     kfree(nddata->cdev);
+    kfree(nddata->devname);
     kfree(nddata);
 }
 
-int ndmgm_free_queue(struct netdev_data *nddata) {
+int ndmgm_free_queue(struct netdev_data *nddata)
+{
     int size = 0;
     struct fo_req *req = NULL;
 
@@ -98,7 +108,8 @@ int ndmgm_free_queue(struct netdev_data *nddata) {
 
 /* this function safely increases the current sequence number and returns it,
  * 0 value is restricted since it's used to indicate failure */
-int ndmgm_incseq(struct netdev_data *nddata) {
+int ndmgm_incseq(struct netdev_data *nddata)
+{
     int seq = 0; /* failure */
 
     if (down_write_trylock(&nddata->sem)) {
@@ -115,10 +126,11 @@ int ndmgm_incseq(struct netdev_data *nddata) {
 }
 
 /*  TODO all this shit will HAVE to use semafors if it has to work */
-int ndmgm_create(int nlpid, char *name) {
+int ndmgm_create(int nlpid, char *name)
+{
     int err = 0;
     struct netdev_data *nddata = NULL;
-    printk(KERN_DEBUG "netdev_create: creating device \\dev\\%s%d\n",
+    printk(KERN_DEBUG "netdev_create: creating device /dev/%s%d\n",
                         name,
                         netdev_count);
 
@@ -130,6 +142,7 @@ int ndmgm_create(int nlpid, char *name) {
     cdev_init(nddata->cdev, &netdev_fops);
     nddata->cdev->owner = THIS_MODULE;
     nddata->cdev->dev = MKDEV(MAJOR(netdev_devno), netdev_count);
+    nddata->dummy = true; /* should be false for a server device */
 
     /* tell the kernel the cdev structure is ready,
      * if it is not do not call cdev_add */
@@ -158,13 +171,15 @@ int ndmgm_create(int nlpid, char *name) {
        goto undo_cdev;
     }
 
-    printk(KERN_DEBUG "netdev: new device: %d, %d\n",
+    printk(KERN_DEBUG "netdev_create: new device: %d, %d\n",
                         MAJOR(nddata->cdev->dev),
                         MINOR(nddata->cdev->dev));
 
     netdev_count++;
     /* add the device to hashtable with all devices since it's ready */
+    ndmgm_get(nddata); /* increase count for hashtable */
     hash_add(netdev_htable, &nddata->hnode, (int)nlpid);
+    ndmgm_get(nddata); /* increase count for table */
     netdev_devices[MINOR(nddata->cdev->dev)] = nddata;
 
     return 0; /* success */
@@ -175,14 +190,17 @@ free_nddata:
     return err;
 }
 
-int ndmgm_find_destroy(int nlpid) {
+int ndmgm_find_destroy(int nlpid)
+{
     struct netdev_data *nddata = NULL;
-
+    
     nddata = ndmgm_find(nlpid);
 
     if (down_read_trylock(&netdev_htable_sem)) {
         hash_del(&nddata->hnode);
+        ndmgm_put(nddata);
         netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
+        ndmgm_put(nddata);
 
         up_read(&netdev_htable_sem);
     }
@@ -190,31 +208,40 @@ int ndmgm_find_destroy(int nlpid) {
     return ndmgm_destroy(nddata);
 }
 
-int ndmgm_destroy(struct netdev_data *nddata) {
+int ndmgm_destroy(struct netdev_data *nddata)
+{
+    printk(KERN_DEBUG "ndmgm_destroy: destroying device %s\n", nddata->devname);
     if (nddata) {
         if (down_write_trylock(&nddata->sem)) {
             nddata->active = false;
 
-            /* first make sure all pending operations are completed */
+            /* make sure all pending operations are completed */
             if (ndmgm_free_queue(nddata)) {
                 printk(KERN_ERR "ndmgm_destroy: failed to free queue\n");
+                return 1; /* failure */
+            }
+            /* should never happen but better test for it */
+            if (ndmgm_refs(nddata) > 1) {
+                printk(KERN_ERR "ndmgm_destroy: more than one ref left\n");
                 return 1; /* failure */
             }
 
             device_destroy(netdev_class, nddata->cdev->dev);
             cdev_del(nddata->cdev);
 
-            up_write(&nddata->sem); /* has to be unlocked before we free it */
+            up_write(&nddata->sem); /* has to be unlocked before kfree */
 
             ndmgm_free_data(nddata); /* finally free netdev_data */
 
+            netdev_count--;
             return 0; /* success */
         }
     }
     return 1; /* failure */
 }
 
-int ndmgm_end(void) {
+int ndmgm_end(void)
+{
     int i = 0;
     struct netdev_data *nddata = NULL;
     struct hlist_node *tmp;
@@ -225,7 +252,9 @@ int ndmgm_end(void) {
             printk(KERN_DEBUG "netdev_end: deleting dev pid = %d\n",
                                 nddata->nlpid);
             hash_del(&nddata->hnode); /* delete the element from table */
+            ndmgm_put(nddata);
             netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
+            ndmgm_put(nddata);
 
             if (ndmgm_destroy(nddata)) {
                 printk(KERN_ERR "netdev_end: failed to destroy nddata\n");
@@ -237,7 +266,8 @@ int ndmgm_end(void) {
     return 1; /* failure */
 }
 
-void ndmgm_prepare(void) {
+void ndmgm_prepare(void)
+{
     /* create and array for all drivices which will be indexed with
      * minor numbers of those devices */
     netdev_devices = (struct netdev_data**)kcalloc(NETDEV_MAX_DEVICES,
@@ -249,13 +279,15 @@ void ndmgm_prepare(void) {
     netdev_count = 0;
 }
 
-struct netdev_data* ndmgm_find(int nlpid) {
+struct netdev_data* ndmgm_find(int nlpid)
+{
     struct netdev_data *nddata = NULL;
 
     if (down_read_trylock(&netdev_htable_sem)) {
         hash_for_each_possible(netdev_htable, nddata, hnode, (int)nlpid) {
             if ( nddata->nlpid == nlpid ) {
                 up_read(&netdev_htable_sem);
+                ndmgm_get(nddata);
                 return nddata;
             }
         }
@@ -263,4 +295,27 @@ struct netdev_data* ndmgm_find(int nlpid) {
     }
 
     return NULL;
+}
+
+void ndmgm_get(struct netdev_data *nddata)
+{
+    down_write(&nddata->sem);
+    atomic_inc(&nddata->users);
+    up_write(&nddata->sem);
+}
+
+void ndmgm_put(struct netdev_data *nddata)
+{
+    down_write(&nddata->sem);
+    atomic_dec(&nddata->users);
+    up_write(&nddata->sem);
+}
+
+int ndmgm_refs(struct netdev_data *nddata)
+{
+    int count;
+    down_write(&nddata->sem);
+    count = atomic_read(&nddata->users);
+    up_write(&nddata->sem);
+    return count;
 }
