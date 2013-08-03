@@ -11,12 +11,6 @@
 #include "netlink.h"
 #include "conn.h"
 
-int proxy_unregister_device(void) {
-    printf("netdev_undergister: WUT?\n");
-
-    return 0;
-}
-
 void proxy_setup_signals() {
     /* send SIGHUP when parent process dies */
     prctl(PR_SET_PDEATHSIG, SIGHUP);
@@ -112,6 +106,10 @@ void proxy_client(struct proxy_dev *pdev) {
         printf("proxy_client: loop broken\n");
     }
 
+    if (!netlink_unregister_dev(pdev)) {
+        printf("proxy_client: failed to unregister device!\n");
+    }
+
     /* TODO free proxy_dev */
     return;
 }
@@ -168,6 +166,10 @@ void proxy_server(int connfd) {
         printf("proxy_server: loop broken\n");
     }
 
+    if (!netlink_unregister_dev(pdev)) {
+        printf("proxy_server: failed to unregister device!\n");
+    }
+
     /* TODO free proxy_data */
     return;
 }
@@ -198,10 +200,12 @@ int proxy_loop(struct proxy_dev *pdev) {
         printf("proxy_loop: one of data sources is ready!\n");
 
         if (FD_ISSET(pdev->us_fd[0], &rset)) {
+            printf("proxy_loop: unix socket data!\n");
             /* message from control unix socket */
             if (!proxy_control(pdev)) {
                 break;
             }
+            break;
         }
 
         if (FD_ISSET(pdev->nl_fd, &rset)) {
@@ -226,7 +230,23 @@ int proxy_handle_remote(struct proxy_dev *pdev) {
     return 1;
 }
 
+/* at the moment the only thing the kernel will send are file
+ * operations so I will ignore other possibilities */
 int proxy_handle_netlink(struct proxy_dev *pdev) {
+    struct netdev_message *ndmsg = NULL;
+
+    ndmsg = netlink_recv(pdev);
+
+    if (!ndmsg) {
+        printf("proxy_handle_netlink: failed to receive message\n");
+        return 0; /* failure */
+    }
+
+
+    /* TODO check message type and handle it */
+
+    /* if error or this message says it wants a response */
+
     return 1;
 }
 
@@ -234,9 +254,11 @@ void proxy_sig_hup(int signo) {
 
     printf("sig_hup: received signal in process: %d\n", getpid());
 
+    /*
     if (proxy_unregister_device()) {
         printf("sig_hup: failed to send unregister message\n");
     }
+    */
 
     return;
 }

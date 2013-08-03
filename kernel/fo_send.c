@@ -69,6 +69,15 @@ ssize_t netdev_fo_read_send_req (struct file *filp, char __user *data, size_t si
     return -EIO;
 }
 ssize_t netdev_fo_write_send_req (struct file *filp, const char __user *data, size_t c, loff_t *offset) {
+    struct s_fo_write args = {
+        .data = NULL,
+        .size = size,
+        .offset = offset
+    };
+
+    if ( send_fo(MSGT_FO_WRITE, filp->private_data, &args, sizeof(args))) {
+        return args.rvalue;
+    }
     return -EIO;
 }
 size_t netdev_fo_aio_read_send_req (struct kiocb *a, const struct iovec *b, unsigned long c, loff_t offset) {
