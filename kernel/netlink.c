@@ -12,11 +12,8 @@ struct sock *nl_sk = NULL;
  * process */
 int pid = 0;
 
-void netlink_recv(struct sk_buff *skb) {
-    /* TODO this will have to be modified to receive responses from
-     * server process, find the appropriate wait queue and release it
-     * once the reply is assigned to appropriate variables in struct
-     * describing one pending file operaion */
+void netlink_recv(struct sk_buff *skb)
+{
     struct nlmsghdr *nlh;
     int msgtype, seq, err = 0;
 
@@ -27,61 +24,73 @@ void netlink_recv(struct sk_buff *skb) {
     seq     = nlh->nlmsg_seq;
     msgtype = nlh->nlmsg_type;
 
-    printk(KERN_DEBUG "netlink: msg type: %d, from pid: %d\n", msgtype, pid);
-    printk(KERN_DEBUG "netlink: msg size: %d, message: %s\n", nlh->nlmsg_len, (char*)nlmsg_data(nlh));
+    printk(KERN_DEBUG "netlink_recv: msg type: %d, from pid: %d\n", msgtype, pid);
+    if (nlh->nlmsg_len > 16) {
+        printk(KERN_DEBUG "netlink_recv: msg size: %d, message: %s\n",
+                nlh->nlmsg_len,
+                (char*)nlmsg_data(nlh));
+    }
     if ( pid == 0 ) { /* message from kernel to kernel, disregard */
-        printk(KERN_ERR "netlink: received message from kernel, pid: %d\n", pid);
+        printk(KERN_ERR "netlink_recv: received message from kernel, pid: %d\n", pid);
         return;
     }
 
     /* if msgtype is a netdev control message */
-    if ( msgtype >= MSGT_CONTROL_START && msgtype < MSGT_CONTROL_END ) {
+    if (msgtype >= MSGT_CONTROL_START && msgtype < MSGT_CONTROL_END) {
         switch (msgtype) {  /* handle the request */
-            case MSGT_CONTROL_ECHO:
-                err = netlink_echo(pid, seq, (char*)nlmsg_data(nlh));
-                break;
-            case MSGT_CONTROL_VERSION:
-                break;
-            case MSGT_CONTROL_REG_DUMMY:
-                err = ndmgm_create(pid, (char*)nlmsg_data(nlh));
-                break;
-            case MSGT_CONTROL_REG_SERVER:
-                /* TODO create a netdev_data for real device */
-                break;
-            case MSGT_CONTROL_UNREGISTER:
-                err = ndmgm_find_destroy(pid);
-                break;
-            case MSGT_CONTROL_RECOVER:
-                break;
-            case MSGT_CONTROL_DRIVER_STOP:
-                break;
-            case MSGT_CONTROL_LOSTCONN:
-                break;
-            default:
-                printk(KERN_ERR
-                        "netlink: unknown control message type: %d\n",
-                        msgtype);
-                break;
+        case MSGT_CONTROL_ECHO:
+            err = netlink_echo(pid, seq, (char*)nlmsg_data(nlh));
+            break;
+        case MSGT_CONTROL_VERSION:
+            break;
+        case MSGT_CONTROL_REG_DUMMY:
+            err = ndmgm_create(pid, (char*)nlmsg_data(nlh));
+            break;
+        case MSGT_CONTROL_REG_SERVER:
+            /* TODO create a netdev_data for real device */
+            break;
+        case MSGT_CONTROL_UNREGISTER:
+            err = ndmgm_find_destroy(pid);
+            break;
+        case MSGT_CONTROL_RECOVER:
+            break;
+        case MSGT_CONTROL_DRIVER_STOP:
+            break;
+        case MSGT_CONTROL_LOSTCONN:
+            break;
+        default:
+            printk(KERN_ERR
+                    "netlink_recv: unknown control msg type: %d\n",
+                    msgtype);
+            break;
         }
     /* if it's not a control message it has to be a file operation */
     } else if ( msgtype > MSGT_FO_START && msgtype < MSGT_FO_END ) {
-        printk(KERN_DEBUG "netlink: file opration message type: %d\n",
-                            msgtype);
-        /* TODO reply to a file operation, find it in the queue and
-         * release from it's wait */
+        printk(KERN_DEBUG "netlink_recv: file opration message");
+        err = fo_recv(skb);
     } else { /* otherwise we don't know what this message type is */
-        printk(KERN_DEBUG "netlink: unknown message type: %d\n",
+        printk(KERN_DEBUG "netlink_recv: unknown message type: %d\n",
                             msgtype);
     }
 
     /* if error or if this message says it wants a response */
     if ( err || (nlh->nlmsg_flags & NLM_F_ACK )) {
-        printk(KERN_DEBUG "netlink_recv: confirmation, err = %d\n", err);
+        printk(KERN_DEBUG "netlink_recv: sending ACK, err = %d\n", err);
         netlink_ack(skb, nlh, err); /* err should be 0 when no error */
+    } else {
+        /* if we don't send ack we have to free sk_buff */
+        kfree_skb(skb);
     }
 }
 
-int netlink_send(struct netdev_data *nddata, int seq, short msgtype, int flags, char *buff, size_t bufflen) {
+int netlink_send(
+    struct netdev_data *nddata,
+    int seq,
+    short msgtype,
+    int flags,
+    char *buff,
+    size_t bufflen)
+{
     /* TODO should receive not only msgtype but also a buffer with
      * properly formatted arguments from netdev_fo_OP_send_req */
     struct nlmsghdr *nlh;
@@ -89,6 +98,7 @@ int netlink_send(struct netdev_data *nddata, int seq, short msgtype, int flags, 
     int rvalue;
 
     printk(KERN_DEBUG "netlink_send: nddata->nlpid = %d\n", nddata->nlpid);
+    printk(KERN_DEBUG "netlink_send: bufflen = %zu\n", bufflen);
 
     /* allocate space for message header and it's payload */
     skb_out = nlmsg_new(bufflen, GFP_KERNEL);
@@ -96,7 +106,7 @@ int netlink_send(struct netdev_data *nddata, int seq, short msgtype, int flags, 
     if(!skb_out) {
         printk(KERN_ERR "netlink: failed to allocate new sk_buff!\n");
         goto free_skb;
-    } 
+    }
 
     /* set pid, seq, message type, payload size and flags */
     nlh = nlmsg_put(
@@ -104,16 +114,18 @@ int netlink_send(struct netdev_data *nddata, int seq, short msgtype, int flags, 
                     nddata->nlpid,
                     seq,
                     msgtype,
-                    bufflen,
+                    bufflen, /* adds nlh size (16bytes) for full size */
                     flags | NLM_F_ACK); /* for delivery confirmation */
+
+    printk(KERN_DEBUG "netlink_send: nlh->nlmsg_len = %d\n", nlh->nlmsg_len);
 
     NETLINK_CB(skb_out).dst_group = 0; /* not in mcast group */
 
-    if (!buff) {
+    if (!buff) { /* possible to send message without payload */
         /* copy data to head of message payload */
         memcpy(nlmsg_data(nlh) ,buff ,bufflen);
     }
-    
+
     /* send messsage,nlmsg_unicast will take care of freeing skb_out */
     rvalue = nlmsg_unicast(nl_sk, skb_out, nddata->nlpid);
 
@@ -131,7 +143,8 @@ free_skb:
     return 0;
 }
 
-int netlink_send_fo(struct netdev_data *nddata, struct fo_req *req) {
+int netlink_send_fo(struct netdev_data *nddata, struct fo_req *req)
+{
     /* increment the sequence number */
     if (!(req->seq = ndmgm_incseq(nddata))) {
         printk(KERN_ERR "netlink_send_fo: failed to increment sequence number\n");
@@ -141,7 +154,8 @@ int netlink_send_fo(struct netdev_data *nddata, struct fo_req *req) {
     return netlink_send(nddata, req->seq, req->msgtype, NLM_F_REQUEST, req->args, req->size);
 }
 
-int netlink_echo(int pid, int seq, char *msg) {
+int netlink_echo(int pid, int seq, char *msg)
+{
     struct nlmsghdr *nlh;
     struct sk_buff *skb_out;
     int msg_size = strlen(msg);
@@ -156,7 +170,7 @@ int netlink_echo(int pid, int seq, char *msg) {
         printk(KERN_ERR "netlink: failed to allocate new sk_buff!\n");
         rvalue = -1;
         goto skbfree;
-    } 
+    }
 
     /* set pid, seq, message type, payload size and flags */
     nlh = nlmsg_put(
@@ -165,7 +179,7 @@ int netlink_echo(int pid, int seq, char *msg) {
                     seq,
                     MSGT_CONTROL_ECHO,
                     msg_size,
-                    NLM_F_ACK);  
+                    NLM_F_ACK);
 
     NETLINK_CB(skb_out).dst_group = 0; /* not in mcast group */
 
@@ -185,7 +199,8 @@ skbfree:
     return -1;
 }
 
-int netlink_init(void) {
+int netlink_init(void)
+{
     /* NOTE: new structure for configuring netlink socket changed in
      * linux kernel 3.8
      * http://stackoverflow.com/questions/15937395/netlink-kernel-create-is-not-working-with-latest-linux-kernel
@@ -210,7 +225,8 @@ int netlink_init(void) {
     return 0;
 }
 
-void netlink_exit(void) {
+void netlink_exit(void)
+{
     printk(KERN_INFO "netdev: closing Netlink\n");
     /* TODO will have to close connections of all devices with the server
      * process or just close the socket if each device will have it's own
