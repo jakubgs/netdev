@@ -237,6 +237,7 @@ int ndmgm_destroy(struct netdev_data *nddata)
             return 0; /* success */
         }
     }
+    printk(KERN_ERR "ndmgm_destroy: failed to destroy netdev_data\n");
     return 1; /* failure */
 }
 
@@ -299,23 +300,15 @@ struct netdev_data* ndmgm_find(int nlpid)
 
 void ndmgm_get(struct netdev_data *nddata)
 {
-    down_write(&nddata->sem);
     atomic_inc(&nddata->users);
-    up_write(&nddata->sem);
 }
 
 void ndmgm_put(struct netdev_data *nddata)
 {
-    down_write(&nddata->sem);
     atomic_dec(&nddata->users);
-    up_write(&nddata->sem);
 }
 
 int ndmgm_refs(struct netdev_data *nddata)
 {
-    int count;
-    down_write(&nddata->sem);
-    count = atomic_read(&nddata->users);
-    up_write(&nddata->sem);
-    return count;
+    return atomic_read(&nddata->users);
 }
