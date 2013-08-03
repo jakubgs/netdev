@@ -18,7 +18,7 @@ struct s_fo_read {
     ssize_t rvalue;
 };
 struct s_fo_write {
-    const char *data;
+    char *data;
     size_t size;
     loff_t *offset;
     ssize_t rvalue;
@@ -32,7 +32,7 @@ struct s_fo_aio_read {
 };
 struct s_fo_aio_write {
     struct kiocb *a;
-    const struct iovec *b;
+    struct iovec *b;
     unsigned long c;
     loff_t offset;
     ssize_t rvalue;
