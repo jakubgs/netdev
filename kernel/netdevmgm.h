@@ -22,7 +22,9 @@ struct netdev_data {
     unsigned int nlpid; /* pid of the process that created this device */
     long curseq; /* last used sequence number for this device, 0 is not used */
     bool active; /* set to false if netlink connection is lost */
+    bool dummy; /* defines if this is a server device or a dummy one */
     char *devname; /* name of the device provided by the process */
+    atomic_t users; /* counter of threads using this objecto */
     struct cdev *cdev; /* internat struct representing char devices */
     struct device *device;
     struct hlist_node hnode; /* to use with hastable */
@@ -45,6 +47,9 @@ int ndmgm_find_destroy(int nlpid);
 int ndmgm_destroy(struct netdev_data *nddata);
 int ndmgm_end(void);
 void ndmgm_prepare(void);
+void ndmgm_get(struct netdev_data *nddata);
+void ndmgm_put(struct netdev_data *nddata);
+int ndmgm_refs(struct netdev_data *nddata);
 
 #endif
 
