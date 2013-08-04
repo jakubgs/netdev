@@ -244,19 +244,29 @@ int proxy_handle_netlink(struct proxy_dev *pdev)
 {
     struct netlink_message *nlmsg = NULL;
 
-    ndmsg = netlink_recv(pdev);
+    nlmsg = netlink_recv(pdev);
 
-    if (!ndmsg) {
+    if (!nlmsg) {
         printf("proxy_handle_netlink: failed to receive message\n");
         return 0; /* failure */
     }
 
-
-    /* TODO check message type and handle it */
+    if (nlmsg->msgtype > MSGT_FO_START && nlmsg->msgtype < MSGT_FO_END ) {
+        /* TODO send to server */
+        netlink_send(pdev,
+                    (void*)pdev->nlh,
+                    pdev->nlh->nlmsg_len,
+                    nlmsg->msgtype,
+                    0);
+    } else {
+        printf("proxy_handle_netlink: unknown message type: %d\n",
+                nlmsg->msgtype);
+        return 0; /* failure */
+    }
 
     /* if error or this message says it wants a response */
 
-    return 1;
+    return 1; /* success */
 }
 
 void proxy_sig_hup(int signo)
