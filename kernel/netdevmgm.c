@@ -141,6 +141,12 @@ struct fo_req * ndmgm_foreq_find(
     return tmp;
 }
 
+int ndmgm_foreq_add(
+    struct netdev_data *nddata,
+    struct fo_req *req)
+{
+    if (down_write_trylock(&nddata->sem)) {
+        kfifo_in(&nddata->fo_queue, &req, sizeof(req));
         up_write(&nddata->sem);
         return 0; /* success */
     }
