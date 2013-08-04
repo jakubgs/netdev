@@ -25,7 +25,7 @@ struct netdev_data * ndmgm_alloc_data(int nlpid, char *name)
     /* GFP_KERNEL means this function can be blocked,
      * so it can't be part of an atomic operation.
      * For that GFP_ATOMIC would have to be used. */
-    nddata = kzalloc(sizeof(struct netdev_data), GFP_KERNEL);
+    nddata = kzalloc(sizeof(*nddata), GFP_KERNEL);
     if (!nddata) {
         printk(KERN_ERR "netdev_create: failed to allocate nddata\n");
         return NULL;
@@ -37,7 +37,7 @@ struct netdev_data * ndmgm_alloc_data(int nlpid, char *name)
         goto free_devname;
     }
 
-    nddata->cdev = kzalloc(sizeof(struct cdev), GFP_KERNEL);
+    nddata->cdev = kzalloc(sizeof(*nddata->cdev), GFP_KERNEL);
     if (!nddata->cdev) {
         printk(KERN_ERR "netdev_create: failed to allocate nddata->cdev\n");
         goto free_nddata;
@@ -60,7 +60,6 @@ struct netdev_data * ndmgm_alloc_data(int nlpid, char *name)
     sprintf(nddata->devname, "/dev/%s%d", name, netdev_count);
     nddata->nlpid = nlpid;
     nddata->active = true;
-    nddata->curseq = 0;
 
     return nddata;
 free_fo_queue:
@@ -91,8 +90,8 @@ int ndmgm_free_queue(struct netdev_data *nddata)
     /* destroy all requests in the queue */
     while (!kfifo_is_empty(&nddata->fo_queue)) {
         printk(KERN_ERR "netdev_destroy: queue not emtpy\n");
-        size = kfifo_out(&nddata->fo_queue, &req, sizeof(struct fo_req *));
-        if ( size != sizeof(struct fo_req *) ) {
+        size = kfifo_out(&nddata->fo_queue, &req, sizeof(req));
+        if ( size != sizeof(req) || IS_ERR(req)) {
             printk(KERN_ERR "netdev_destroy: failed to fetch from queue, size = %d\n", size);
             return 1; /* failure */
         }
