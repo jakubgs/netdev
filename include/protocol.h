@@ -39,7 +39,7 @@
 
 /* limit of control messsages */
 #define MSGT_CONTROL_START        0
-#define MSGT_CONTROL_END          100
+#define MSGT_CONTROL_END          11
 
 /* Definitions used to distinguis between file operation structures
  * that contain all the functiona arguments, best used with short or __u16
