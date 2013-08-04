@@ -9,6 +9,7 @@
 
 #include "netdevmgm.h"
 
+struct netdev_data;
 /* file structure for a queue of operations of dummy device, those will have
  * to be allocated fast and from a large pool since there will be a lot */
 struct fo_req {
@@ -23,7 +24,7 @@ struct fo_req {
 /* used for sending file operations converted by send_req functions to
  * a buffer of certian size to the loop sending operations whtough netlink
  * to the server process */
-int fo_send(short msgtype, struct netdev_data *, void *args, size_t size);
+int fo_send(short msgtype, struct netdev_data *nddata, void *args, size_t size);
 int fo_recv(struct sk_buff *skb);
 int fo_complete(struct netdev_data *nddata, struct nlmsghdr *nlh, struct sk_buff *skb);
 int fo_execute(void *data);
