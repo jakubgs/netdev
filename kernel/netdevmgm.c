@@ -104,21 +104,48 @@ int ndmgm_free_queue(struct netdev_data *nddata)
     return 0; /* success */
 }
 
-/* this function safely increases the current sequence number and returns it,
- * 0 value is restricted since it's used to indicate failure */
-int ndmgm_incseq(struct netdev_data *nddata)
+/* find the filo operation request with the correct sequence number */
+struct fo_req * ndmgm_foreq_find(
+    struct netdev_data *nddata,
+    int seq)
 {
-    int seq = 0; /* failure */
+    /* will hold the first element as a stopper */
+    struct fo_req *req = NULL;
+    struct fo_req *tmp = NULL;
+    int size = 0;
 
     if (down_write_trylock(&nddata->sem)) {
-        seq = nddata->curseq++;
-
-        if ( seq == 0 ) { /* 0 is not a valide sequence number */
-            seq = nddata->curseq++;
+        while (!kfifo_is_empty(&nddata->fo_queue)) {
+            debug("queue is not empty");
+            size = kfifo_out(&nddata->fo_queue, &tmp, sizeof(tmp));
+            if (size < sizeof(tmp) || IS_ERR(tmp)) {
+                printk(KERN_ERR "ndmgm_foreq_find: failed to get queue element\n");
+                tmp = NULL;
+                break;
+            }
+            if (req == NULL) {
+                req = tmp; /* first element */
+            }
+            if (tmp->seq == seq) {
+                break;
+            }
+            /* put the wrong element back into the queue */
+            kfifo_in(&nddata->fo_queue, &tmp, sizeof(tmp));
+            if (req == tmp) {
+                tmp = NULL;
+                break;
+            }
         }
-
         up_write(&nddata->sem);
     }
+    return tmp;
+}
+
+        up_write(&nddata->sem);
+        return 0; /* success */
+    }
+    return 1; /* failure */
+}
 
     return seq;
 }
