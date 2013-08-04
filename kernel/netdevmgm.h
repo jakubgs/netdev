@@ -9,7 +9,9 @@
 #include <linux/slab.h>
 
 #include "protocol.h"
+#include "fo.h"
 
+struct fo_req;
 extern dev_t netdev_devno; /* __u32, unsigned 32bit type, 12 bit for majro, 20 minor */
 extern struct class *netdev_class;
 extern unsigned int netdev_count;
@@ -42,6 +44,8 @@ int ndmgm_create(int nlpid, char *name);
 struct netdev_data * ndmgm_find(int nlpid);
 void ndmgm_free_data(struct netdev_data *nddata);
 int ndmgm_free_queue(struct netdev_data *nddata);
+struct fo_req * ndmgm_foreq_find(struct netdev_data *nddata, int seq);
+int ndmgm_foreq_add(struct netdev_data *nddata, struct fo_req *req);
 int ndmgm_incseq(struct netdev_data *nddata);
 int ndmgm_find_destroy(int nlpid);
 int ndmgm_destroy(struct netdev_data *nddata);
