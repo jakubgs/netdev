@@ -5,6 +5,7 @@
 #include "protocol.h"
 #include "netlink.h"
 #include "fo_struct.h"
+#include "dbg.h"
 
 /* used for sending file operations converted by send_req functions to
  * a buffer of certian size to the loop sending operations whtough netlink
@@ -31,7 +32,7 @@ int fo_send(short msgtype, struct netdev_data *nddata, void *args, size_t size)
     req->args = args;
     req->size = size;
     init_completion(&req->comp);
-    printk(KERN_DEBUG "fo_send: size = %zu\n", req->size);
+    debug("size = %zu", req->size);
 
     buffer = kzalloc(req->size, GFP_KERNEL);
 
@@ -50,8 +51,10 @@ int fo_send(short msgtype, struct netdev_data *nddata, void *args, size_t size)
 
     /* wait for completion, it will be signaled once a reply is received */
     wait_for_completion(&req->comp);
+    debug("returned from wait for file operation");
     rvalue = req->rvalue;
-    
+    debug("rvalue = %d", rvalue);
+
 out:
     kmem_cache_free(nddata->queue_pool, req);
     ndmgm_put(nddata); /* decrease references to netdev_data */
