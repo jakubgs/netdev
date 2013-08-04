@@ -14,9 +14,13 @@
  * send_req function once receiving loop gets the response */
 int fo_send(short msgtype, struct netdev_data *nddata, void *args, size_t size)
 {
-    int rvalue = 0;
+    int rvalue = 1;
     void *buffer = NULL;
     struct fo_req *req = NULL;
+
+    if (!nddata->active) {
+        return -EBUSY;
+    }
 
     /* increment reference counter of netdev_data */
     ndmgm_get(nddata);
@@ -25,9 +29,10 @@ int fo_send(short msgtype, struct netdev_data *nddata, void *args, size_t size)
 
     if (!req) {
         printk(KERN_ERR "senf_fo: failed to allocate queue_pool\n");
-        return -ENOMEM;
+        rvalue = -ENOMEM;
+        goto out;
     }
-    
+
     req->msgtype = msgtype;
     req->args = args;
     req->size = size;
@@ -45,7 +50,7 @@ int fo_send(short msgtype, struct netdev_data *nddata, void *args, size_t size)
     memcpy(req->args, buffer, req->size);
 
     /* add the req to a queue of requests */
-    kfifo_in(&nddata->fo_queue, req, sizeof(*req)); /* TODO semaphore */
+    ndmgm_foreq_add(nddata, req);
 
     netlink_send_fo(nddata, req);
 
@@ -57,7 +62,7 @@ int fo_send(short msgtype, struct netdev_data *nddata, void *args, size_t size)
 
 out:
     kmem_cache_free(nddata->queue_pool, req);
-    ndmgm_put(nddata); /* decrease references to netdev_data */
+    ndmgm_put(nddata);
     return rvalue;
 }
 
@@ -66,6 +71,7 @@ int fo_recv(struct sk_buff *skb)
     struct netdev_data *nddata = NULL;
     struct task_struct *task = NULL;
     struct nlmsghdr *nlh = NULL;
+    int rvalue = 0; /* success */
 
     nlh = nlmsg_hdr(skb);
 
@@ -73,8 +79,9 @@ int fo_recv(struct sk_buff *skb)
     if (IS_ERR(nddata)) {
         printk(KERN_ERR "fo_execute: failed to find device for pid = %d\n",
                 nlh->nlmsg_pid);
-        return 1; /* failute */
+        return 1; /* failure */
     }
+    ndmgm_get(nddata);
 
     if (nddata->dummy) {
         return fo_complete(nddata, nlh, skb); /* find fo in queue and complete it */
@@ -88,7 +95,8 @@ int fo_recv(struct sk_buff *skb)
         }
     }
 
-    return 0; /* success */
+    ndmgm_put(nddata);
+    return rvalue;
 }
 
 int fo_complete(
@@ -114,12 +122,14 @@ int fo_execute(void *data)
     if (IS_ERR(nddata)) {
         printk(KERN_ERR "fo_execute: failed to find device for pid = %d\n",
                 nlh->nlmsg_pid);
-        do_exit(-1); /* this is a thread */
+        do_exit(1); /* this is a thread */
     }
+    ndmgm_get(nddata);
 
     /* TODO execute appropriate file operation and then send back
      * the result to the server in userspace */
 
+    ndmgm_put(nddata);
     do_exit(0); /* success */
 }
 
