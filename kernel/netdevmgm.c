@@ -2,7 +2,7 @@
 #include <linux/device.h> 
 
 #include "netdevmgm.h"
-#include "fo.h"
+#include "dbg.h"
 
 static DEFINE_HASHTABLE(netdev_htable, NETDEV_HASHTABLE_SIZE);
 static struct rw_semaphore netdev_htable_sem;
@@ -130,7 +130,7 @@ int ndmgm_create(int nlpid, char *name)
 {
     int err = 0;
     struct netdev_data *nddata = NULL;
-    printk(KERN_DEBUG "netdev_create: creating device /dev/%s%d\n",
+    debug("creating device /dev/%s%d",
                         name,
                         netdev_count);
 
@@ -138,6 +138,7 @@ int ndmgm_create(int nlpid, char *name)
         printk(KERN_ERR "netdev_create: failed to create netdev_data\n");
         return 1;
     }
+    debug("nddata = %p", nddata);
 
     cdev_init(nddata->cdev, &netdev_fops);
     nddata->cdev->owner = THIS_MODULE;
@@ -171,7 +172,7 @@ int ndmgm_create(int nlpid, char *name)
        goto undo_cdev;
     }
 
-    printk(KERN_DEBUG "netdev_create: new device: %d, %d\n",
+    debug("new device: %d, %d",
                         MAJOR(nddata->cdev->dev),
                         MINOR(nddata->cdev->dev));
 
@@ -210,7 +211,7 @@ int ndmgm_find_destroy(int nlpid)
 
 int ndmgm_destroy(struct netdev_data *nddata)
 {
-    printk(KERN_DEBUG "ndmgm_destroy: destroying device %s\n", nddata->devname);
+    debug("destroying device %s", nddata->devname);
     if (nddata) {
         if (down_write_trylock(&nddata->sem)) {
             nddata->active = false;
@@ -246,11 +247,13 @@ int ndmgm_end(void)
     int i = 0;
     struct netdev_data *nddata = NULL;
     struct hlist_node *tmp;
+    debug("cleaning devices");
 
     if (down_write_trylock(&netdev_htable_sem)) {
+        debug("locked");
         /* needs to be _safe so we can delete elements inside the loop */
         hash_for_each_safe(netdev_htable, i, tmp, nddata, hnode) {
-            printk(KERN_DEBUG "netdev_end: deleting dev pid = %d\n",
+            debug("deleting dev pid = %d",
                                 nddata->nlpid);
             hash_del(&nddata->hnode); /* delete the element from table */
             ndmgm_put(nddata);
@@ -300,11 +303,13 @@ struct netdev_data* ndmgm_find(int nlpid)
 
 void ndmgm_get(struct netdev_data *nddata)
 {
+    //debug("called from: %pS", __builtin_return_address(0));
     atomic_inc(&nddata->users);
 }
 
 void ndmgm_put(struct netdev_data *nddata)
 {
+    //debug("called from: %pS", __builtin_return_address(0));
     atomic_dec(&nddata->users);
 }
 
