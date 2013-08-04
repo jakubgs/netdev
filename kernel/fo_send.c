@@ -84,14 +84,15 @@ int fo_recv(struct sk_buff *skb)
     ndmgm_get(nddata);
 
     if (nddata->dummy) {
-        return fo_complete(nddata, nlh, skb); /* find fo in queue and complete it */
+        /* find fo in queue and complete it */
+        rvalue = fo_complete(nddata, nlh, skb);
     } else {
         /* crate a new thread since we want to return control to the
          * server process so it doesn't wait needlesly */
         task = kthread_run(&fo_execute, (void*)skb, "fo_execute");
         if (IS_ERR(task)) {
-            printk("fo_recv: failed to create thread for file operation, errpr = %ld\n", PTR_ERR(task));
-            return 1; /* failure */
+            printk("fo_recv: failed to create thread for file operation, error = %ld\n", PTR_ERR(task));
+            rvalue = 1; /* failure */
         }
     }
 
@@ -104,8 +105,19 @@ int fo_complete(
     struct nlmsghdr *nlh,
     struct sk_buff *skb)
 {
-    /* TODO find file operation in the queue, pass result and complete */
-    return 1; /* success */
+    struct fo_req *req = NULL;
+
+    req = ndmgm_foreq_find(nddata, nlh->nlmsg_seq);
+
+    if (!req) {
+        printk(KERN_ERR "fo_complete: failed to obtain fo request\n");
+        return 1; /* failure */
+    }
+
+    req->rvalue = -ENODATA;
+    complete(&req->comp);
+
+    return 0; /* success */
 }
 
 /* this function will be executed as a new thread with kthread_run */
