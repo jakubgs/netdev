@@ -198,8 +198,6 @@ int ndmgm_find_destroy(int nlpid)
         netdev_minors_used[MINOR(nddata->cdev->dev)] = 0;
         hash_del(&nddata->hnode);
         ndmgm_put(nddata);
-        netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
-        ndmgm_put(nddata);
 
         up_read(&netdev_htable_sem);
     }
@@ -256,8 +254,6 @@ int ndmgm_end(void)
             netdev_minors_used[MINOR(nddata->cdev->dev)] = 0;
             hash_del(&nddata->hnode); /* delete the element from table */
             ndmgm_put(nddata);
-            netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
-            ndmgm_put(nddata);
 
             if (ndmgm_destroy(nddata)) {
                 printk(KERN_ERR "netdev_end: failed to destroy nddata\n");
@@ -290,7 +286,6 @@ struct netdev_data* ndmgm_find(int nlpid)
         hash_for_each_possible(netdev_htable, nddata, hnode, (int)nlpid) {
             if ( nddata->nlpid == nlpid ) {
                 up_read(&netdev_htable_sem);
-                ndmgm_get(nddata);
                 return nddata;
             }
         }
