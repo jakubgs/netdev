@@ -118,14 +118,33 @@ int netlink_send(
     return 1; /* success */
 }
 
-void * netlink_recv(
-    struct proxy_dev *pdev,
-    size_t bsize,
-    int msgtype,
-    int flags)
-{
-    return NULL; /* failure */
+struct netlink_message * netlink_recv(struct proxy_dev *pdev) {
+    struct netlink_message *nlmsg = NULL;
+    int bytes;
+
+    bytes = recvmsg(pdev->nl_fd, pdev->msgh, 0);
+
+    if ( bytes <= -1 ) {
+        perror("netlink_recv(recvmsg)");
+        return NULL;
+    }
+
+    nlmsg = malloc(sizeof(*nlmsg));
+    if (!nlmsg) {
+        perror("netlink_recv(malloc)");
+    }
+
+    nlmsg->msgtype = pdev->nlh->nlmsg_type;
+    nlmsg->size = pdev->nlh->nlmsg_len;
+    nlmsg->payload = NLMSG_DATA(pdev->nlh);
+
+    printf("netlink_recv: msgtype = %d\n\tsize = %zu\n",
+            nlmsg->msgtype,
+            nlmsg->size);
+
+    return nlmsg;
 }
+
 int netlink_reg_dummy_dev(
     struct proxy_dev *pdev)
 {
