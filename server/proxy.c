@@ -11,7 +11,8 @@
 #include "netlink.h"
 #include "conn.h"
 
-void proxy_setup_signals() {
+void proxy_setup_signals()
+{
     /* send SIGHUP when parent process dies */
     prctl(PR_SET_PDEATHSIG, SIGHUP);
     /* and handle SIGHUP to safely unregister the device */
@@ -20,7 +21,8 @@ void proxy_setup_signals() {
     signal(SIGINT, SIG_IGN);
 }
 
-int proxy_setup_unixsoc(struct proxy_dev *pdev) {
+int proxy_setup_unixsoc(struct proxy_dev *pdev)
+{
     if (socketpair(AF_LOCAL, SOCK_STREAM, 0, pdev->us_fd) == -1) {
         perror("proxy_setup_unixsoc");
         return 0; /* failure */
@@ -28,7 +30,8 @@ int proxy_setup_unixsoc(struct proxy_dev *pdev) {
     return 1; /* success */
 }
 
-struct proxy_dev * proxy_alloc_dev(int connfd) {
+struct proxy_dev * proxy_alloc_dev(int connfd)
+{
     struct proxy_dev *pdev = NULL;
     socklen_t addrlen = 0;
 
@@ -54,7 +57,8 @@ struct proxy_dev * proxy_alloc_dev(int connfd) {
     return pdev;
 }
 
-void proxy_client(struct proxy_dev *pdev) {
+void proxy_client(struct proxy_dev *pdev)
+{
     pdev->pid = getpid(); /* make sure you have the right pid */
     proxy_setup_signals();
     printf("proxy_client: starting connection to server, pid = %d\n", pdev->pid);
@@ -114,7 +118,8 @@ void proxy_client(struct proxy_dev *pdev) {
     return;
 }
 
-void proxy_server(int connfd) {
+void proxy_server(int connfd)
+{
     struct proxy_dev *pdev = NULL;
 
     proxy_setup_signals();
@@ -174,7 +179,8 @@ void proxy_server(int connfd) {
     return;
 }
 
-int proxy_loop(struct proxy_dev *pdev) {
+int proxy_loop(struct proxy_dev *pdev)
+{
     int maxfd, nready;
     fd_set rset;
 
@@ -194,7 +200,7 @@ int proxy_loop(struct proxy_dev *pdev) {
                             NULL,   /* no exception fd */
                             NULL)   /* no timeout */
                             ) == -1 ) {
-                perror("proxy_loop(select)");
+            perror("proxy_loop(select)");
             return 0; /* failure */
         }
         printf("proxy_loop: one of data sources is ready!\n");
@@ -222,18 +228,21 @@ int proxy_loop(struct proxy_dev *pdev) {
     return 1; /* success */
 }
 
-int proxy_control(struct proxy_dev *pdev) {
+int proxy_control(struct proxy_dev *pdev)
+{
     return 1;
 }
 
-int proxy_handle_remote(struct proxy_dev *pdev) {
+int proxy_handle_remote(struct proxy_dev *pdev)
+{
     return 1;
 }
 
 /* at the moment the only thing the kernel will send are file
  * operations so I will ignore other possibilities */
-int proxy_handle_netlink(struct proxy_dev *pdev) {
-    struct netdev_message *ndmsg = NULL;
+int proxy_handle_netlink(struct proxy_dev *pdev)
+{
+    struct netlink_message *nlmsg = NULL;
 
     ndmsg = netlink_recv(pdev);
 
@@ -250,7 +259,8 @@ int proxy_handle_netlink(struct proxy_dev *pdev) {
     return 1;
 }
 
-void proxy_sig_hup(int signo) {
+void proxy_sig_hup(int signo)
+{
 
     printf("sig_hup: received signal in process: %d\n", getpid());
 
