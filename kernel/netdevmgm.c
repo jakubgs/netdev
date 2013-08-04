@@ -147,7 +147,11 @@ struct fo_req * ndmgm_foreq_find(
     return 1; /* failure */
 }
 
-    return seq;
+/* this function safely increases the current sequence number */
+int ndmgm_incseq(struct netdev_data *nddata)
+{
+    atomic_inc(&nddata->curseq);
+    return atomic_read(&nddata->users);
 }
 
 /*  TODO all this shit will HAVE to use semafors if it has to work */
@@ -220,6 +224,10 @@ int ndmgm_find_destroy(int nlpid)
     struct netdev_data *nddata = NULL;
     
     nddata = ndmgm_find(nlpid);
+    if (!nddata) {
+        printk(KERN_ERR "ndmgm_find_destroy: no such device\n");
+        return 1; /* failure */
+    }
 
     if (down_read_trylock(&netdev_htable_sem)) {
         netdev_minors_used[MINOR(nddata->cdev->dev)] = 0;
@@ -246,7 +254,7 @@ int ndmgm_destroy(struct netdev_data *nddata)
             }
             /* should never happen but better test for it */
             if (ndmgm_refs(nddata) > 1) {
-                printk(KERN_ERR "ndmgm_destroy: more than one ref left\n");
+                printk(KERN_ERR "ndmgm_destroy: more than one ref left: %d\n", ndmgm_refs(nddata));
                 return 1; /* failure */
             }
 
@@ -305,6 +313,8 @@ void ndmgm_prepare(void)
     netdev_count = 0;
 }
 
+/* returns netdev_data based on pid, you have to make sure to
+ * increment the reference counter */
 struct netdev_data* ndmgm_find(int nlpid)
 {
     struct netdev_data *nddata = NULL;
