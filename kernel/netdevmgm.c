@@ -7,7 +7,7 @@
 static DEFINE_HASHTABLE(netdev_htable, NETDEV_HASHTABLE_SIZE);
 static struct rw_semaphore netdev_htable_sem;
 unsigned int netdev_count;
-struct netdev_data **netdev_devices;
+int *netdev_minors_used;
 
 struct netdev_data * ndmgm_alloc_data(int nlpid, char *name)
 {
@@ -15,7 +15,7 @@ struct netdev_data * ndmgm_alloc_data(int nlpid, char *name)
     struct netdev_data *nddata; /* TODO needs to be in a list */
 
     /* check if we have space for another device */
-    /* TODO needs a reuse of device numbers from netdev_devices array */
+    /* TODO needs a reuse of device numbers from netdev_minors_used array */
     if ( netdev_count + 1 > NETDEV_MAX_DEVICES ) {
         printk(KERN_ERR "netdev_create: max devices reached = %d\n",
                         NETDEV_MAX_DEVICES);
@@ -180,8 +180,7 @@ int ndmgm_create(int nlpid, char *name)
     /* add the device to hashtable with all devices since it's ready */
     ndmgm_get(nddata); /* increase count for hashtable */
     hash_add(netdev_htable, &nddata->hnode, (int)nlpid);
-    ndmgm_get(nddata); /* increase count for table */
-    netdev_devices[MINOR(nddata->cdev->dev)] = nddata;
+    netdev_minors_used[MINOR(nddata->cdev->dev)] = nddata->nlpid;
 
     return 0; /* success */
 undo_cdev:
@@ -198,6 +197,7 @@ int ndmgm_find_destroy(int nlpid)
     nddata = ndmgm_find(nlpid);
 
     if (down_read_trylock(&netdev_htable_sem)) {
+        netdev_minors_used[MINOR(nddata->cdev->dev)] = 0;
         hash_del(&nddata->hnode);
         ndmgm_put(nddata);
         netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
@@ -255,6 +255,7 @@ int ndmgm_end(void)
         hash_for_each_safe(netdev_htable, i, tmp, nddata, hnode) {
             debug("deleting dev pid = %d",
                                 nddata->nlpid);
+            netdev_minors_used[MINOR(nddata->cdev->dev)] = 0;
             hash_del(&nddata->hnode); /* delete the element from table */
             ndmgm_put(nddata);
             netdev_devices[MINOR(nddata->cdev->dev)] = NULL;
@@ -274,8 +275,8 @@ void ndmgm_prepare(void)
 {
     /* create and array for all drivices which will be indexed with
      * minor numbers of those devices */
-    netdev_devices = (struct netdev_data**)kcalloc(NETDEV_MAX_DEVICES,
-                                            sizeof(struct netdev_data*),
+    netdev_minors_used = (int*)kcalloc(NETDEV_MAX_DEVICES,
+                                            sizeof(*netdev_minors_used),
                                             GFP_KERNEL);
     /* create the hashtable which will store data about created devices
      * and for easy access through pid */
