@@ -2,6 +2,7 @@
 #include <linux/device.h> 
 
 #include "netdevmgm.h"
+#include "fo.h"
 #include "dbg.h"
 
 static DEFINE_HASHTABLE(netdev_htable, NETDEV_HASHTABLE_SIZE);

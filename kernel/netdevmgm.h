@@ -9,7 +9,7 @@
 #include <linux/slab.h>
 
 #include "protocol.h"
-#include "fo.h"
+#include "fo_comm.h"
 
 struct fo_req;
 extern dev_t netdev_devno; /* __u32, unsigned 32bit type, 12 bit for majro, 20 minor */
