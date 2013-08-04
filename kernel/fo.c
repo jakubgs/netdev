@@ -53,7 +53,7 @@ int     netdev_fo_open ( struct inode *inode, struct file *filp) {
     pk(__FUNCTION__);
     
     /* get the device connected with this file */
-    nddata = netdev_devices[MINOR(inode->i_cdev->dev)];
+    nddata = ndmgm_find(netdev_minors_used[MINOR(inode->i_cdev->dev)]);
 
     /* set private data for easy access to netdev_data struct */
     filp->private_data = (void*)nddata;
