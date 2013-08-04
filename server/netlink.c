@@ -3,7 +3,7 @@
 
 #include "netlink.h"
 #include "protocol.h"
-
+#include "netprotocol.h"
 int netlink_setup(
     struct proxy_dev *pdev)
 {
@@ -22,8 +22,8 @@ int netlink_setup(
     pdev->nl_src_addr = malloc(sizeof(*pdev->nl_src_addr));
     pdev->nl_dst_addr = malloc(sizeof(*pdev->nl_dst_addr));
     pdev->msgh=         malloc(sizeof(*pdev->msgh));
-    pdev->nlh =         malloc(NLMSG_SPACE(MAX_PAYLOAD)); /* not sure */
-    pdev->iov =         malloc(NLMSG_SPACE(MAX_PAYLOAD)); /* not sure */
+    pdev->nlh =         malloc(NLMSG_SPACE(MAX_PAYLOAD)); /* TODO */
+    pdev->iov =         malloc(NLMSG_SPACE(MAX_PAYLOAD)); /* TODO */
     memset(pdev->nl_src_addr, 0, sizeof(*pdev->nl_src_addr));
     memset(pdev->nl_dst_addr, 0, sizeof(*pdev->nl_dst_addr));
     memset(pdev->msgh, 0, sizeof(*pdev->msgh));
@@ -62,9 +62,10 @@ int netlink_send(
 {
     struct nlmsgerr *msgerr = NULL;
 
+    printf("netlink_send: sending message to kernel\n");
     printf("netlink_send: buff = %s, bsize = %zu\n", (char*)buff, bsize);
-    
-    pdev->nlh->nlmsg_len = NLMSG_SPACE(bsize); /* structure size + payload */
+
+    pdev->nlh->nlmsg_len = NLMSG_SPACE(bsize); /* struct size + payload */
     pdev->nlh->nlmsg_pid = pdev->pid;
     printf("netlink_send: nlh->nlmsg_pid = %d\n", pdev->nlh->nlmsg_pid);
     pdev->nlh->nlmsg_type = msgtype;
@@ -72,8 +73,9 @@ int netlink_send(
     pdev->nlh->nlmsg_flags = flags | NLM_F_ACK;
 
     /* TODO more data about device */
-    //memcpy(NLMSG_DATA(pdev->nlh), buff, bsize);
-    strcpy(NLMSG_DATA(pdev->nlh), buff);
+    if (buff) {
+        memcpy(NLMSG_DATA(pdev->nlh), buff, bsize);
+    }
 
     /* netlink header is our payload */
     pdev->iov->iov_base = (void *)pdev->nlh;
@@ -81,8 +83,8 @@ int netlink_send(
 
     pdev->msgh->msg_name = (void *)pdev->nl_dst_addr;
     pdev->msgh->msg_namelen = sizeof(*pdev->nl_dst_addr);
-    pdev->msgh->msg_iov = pdev->iov; /* this normally is an array of iovec */
-    pdev->msgh->msg_iovlen = 1; /* TODO, we won't always use just one iovec */
+    pdev->msgh->msg_iov = pdev->iov; /* this normally is an array of */
+    pdev->msgh->msg_iovlen = 1; /* TODO, we won't always use just one */
 
     /* send everything */
     if ( sendmsg(pdev->nl_fd, pdev->msgh, 0) == -1 ) {
@@ -96,11 +98,13 @@ int netlink_send(
         return 0; /* failure */
     } else {
         if ( pdev->nlh->nlmsg_type == NLMSG_ERROR ) {
-            printf("netlink_send: nlmsgerr size = %d\n", pdev->nlh->nlmsg_len);
+            printf("netlink_send: nlmsgerr size = %d\n",
+                    pdev->nlh->nlmsg_len);
             msgerr = ((struct nlmsgerr*)NLMSG_DATA(pdev->nlh));
-            printf("netlink_send: msgerr->error = %d\n", ntohl(msgerr->error));
             if (msgerr->error != 0) {
                 printf("netlink_send: delivery failure!\n");
+                printf("netlink_send: msgerr->error = %d\n",
+                        ntohl(msgerr->error));
                 return 0; /* failure */
             } else {
                 printf("netlink_send: delivery success!\n");
