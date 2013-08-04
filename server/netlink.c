@@ -148,22 +148,29 @@ struct netlink_message * netlink_recv(struct proxy_dev *pdev) {
 int netlink_reg_dummy_dev(
     struct proxy_dev *pdev)
 {
-    printf("netlink_reg_dummy_dev: sending message to kernel\n");
-    netlink_send(pdev, pdev->dummy_dev_name, sizeof(pdev->dummy_dev_name), MSGT_CONTROL_REG_DUMMY, NLM_F_REQUEST);
-    printf("netlink_reg_dummy_dev: waiting for message from kernel\n");
-    
-    return 1; /* success */
+    return netlink_send(pdev,
+                        pdev->dummy_dev_name,
+                        sizeof(pdev->dummy_dev_name),
+                        MSGT_CONTROL_REG_DUMMY,
+                        NLM_F_REQUEST);
 }
 
 int netlink_reg_remote_dev(
     struct proxy_dev *pdev)
 {
-    return 0;
+    return netlink_send(pdev,
+                        pdev->remote_dev_name,
+                        sizeof(pdev->remote_dev_name),
+                        MSGT_CONTROL_REG_SERVER,
+                        NLM_F_REQUEST);
 }
 
 int netlink_unregister_dev(
     struct proxy_dev *pdev)
 {
-    netlink_send(pdev, 0, 0, MSGT_CONTROL_UNREGISTER, NLM_F_REQUEST);
-    return 0;
+    return netlink_send(pdev,
+                        NULL, /* no payload */
+                        0, /* 0 payload size */
+                        MSGT_CONTROL_UNREGISTER,
+                        NLM_F_REQUEST);
 }
