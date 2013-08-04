@@ -56,8 +56,9 @@ struct netdev_data * ndmgm_alloc_data(int nlpid, char *name)
         goto free_fo_queue;
     }
 
-    init_rwsem(&nddata->sem);
     sprintf(nddata->devname, "/dev/%s%d", name, netdev_count);
+    init_rwsem(&nddata->sem);
+    atomic_set(&nddata->curseq, 0);
     nddata->nlpid = nlpid;
     nddata->active = true;
 
@@ -98,8 +99,6 @@ int ndmgm_free_queue(struct netdev_data *nddata)
 
         req->rvalue = -ENODATA;
         complete(&req->comp); /* complete all pending file operations */
-
-        kmem_cache_free(nddata->queue_pool, req);
     }
 
     return 0; /* success */
