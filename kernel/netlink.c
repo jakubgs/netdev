@@ -5,6 +5,7 @@
 #include "netlink.h"
 #include "netdevmgm.h"
 #include "protocol.h"
+#include "dbg.h"
 
 struct sock *nl_sk = NULL;
 /* TODO this will have to be part of a struct that will contain information
@@ -19,25 +20,24 @@ void netlink_recv(struct sk_buff *skb)
 
     nlh = nlmsg_hdr(skb);
 
-    /* pid of sending process, also, port id */
     pid     = nlh->nlmsg_pid;
     seq     = nlh->nlmsg_seq;
     msgtype = nlh->nlmsg_type;
 
-    printk(KERN_DEBUG "netlink_recv: msg type: %d, from pid: %d\n", msgtype, pid);
+    debug("msg type: %d, from pid: %d", msgtype, pid);
     if (nlh->nlmsg_len > 16) {
-        printk(KERN_DEBUG "netlink_recv: msg size: %d, message: %s\n",
+        debug("msg size: %d, message: %s",
                 nlh->nlmsg_len,
                 (char*)nlmsg_data(nlh));
     }
-    if ( pid == 0 ) { /* message from kernel to kernel, disregard */
+    if ( pid == 0 ) {
         printk(KERN_ERR "netlink_recv: received message from kernel, pid: %d\n", pid);
         return;
     }
 
     /* if msgtype is a netdev control message */
     if (msgtype >= MSGT_CONTROL_START && msgtype < MSGT_CONTROL_END) {
-        switch (msgtype) {  /* handle the request */
+        switch (msgtype) {
         case MSGT_CONTROL_ECHO:
             err = netlink_echo(pid, seq, (char*)nlmsg_data(nlh));
             break;
@@ -66,19 +66,21 @@ void netlink_recv(struct sk_buff *skb)
         }
     /* if it's not a control message it has to be a file operation */
     } else if ( msgtype > MSGT_FO_START && msgtype < MSGT_FO_END ) {
-        printk(KERN_DEBUG "netlink_recv: file opration message");
+        debug("file opration message");
         err = fo_recv(skb);
-    } else { /* otherwise we don't know what this message type is */
-        printk(KERN_DEBUG "netlink_recv: unknown message type: %d\n",
+    /* otherwise we don't know what this message type is */
+    } else {
+        debug("unknown message type: %d",
                             msgtype);
     }
 
     /* if error or if this message says it wants a response */
     if ( err || (nlh->nlmsg_flags & NLM_F_ACK )) {
-        printk(KERN_DEBUG "netlink_recv: sending ACK, err = %d\n", err);
+        debug("sending ACK, err = %d", err);
         netlink_ack(skb, nlh, err); /* err should be 0 when no error */
     } else {
         /* if we don't send ack we have to free sk_buff */
+        debug("not sending ACK");
         kfree_skb(skb);
     }
 }
@@ -97,8 +99,8 @@ int netlink_send(
     struct sk_buff *skb_out;
     int rvalue;
 
-    printk(KERN_DEBUG "netlink_send: nddata->nlpid = %d\n", nddata->nlpid);
-    printk(KERN_DEBUG "netlink_send: bufflen = %zu\n", bufflen);
+    debug("nddata->nlpid = %d", nddata->nlpid);
+    debug("bufflen = %zu", bufflen);
 
     /* allocate space for message header and it's payload */
     skb_out = nlmsg_new(bufflen, GFP_KERNEL);
@@ -117,7 +119,7 @@ int netlink_send(
                     bufflen, /* adds nlh size (16bytes) for full size */
                     flags | NLM_F_ACK); /* for delivery confirmation */
 
-    printk(KERN_DEBUG "netlink_send: nlh->nlmsg_len = %d\n", nlh->nlmsg_len);
+    debug("nlh->nlmsg_len = %d", nlh->nlmsg_len);
 
     NETLINK_CB(skb_out).dst_group = 0; /* not in mcast group */
 
