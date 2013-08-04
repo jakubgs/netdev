@@ -15,18 +15,18 @@ struct fo_req;
 extern dev_t netdev_devno; /* __u32, unsigned 32bit type, 12 bit for majro, 20 minor */
 extern struct class *netdev_class;
 extern unsigned int netdev_count;
-extern struct netdev_data **netdev_devices; /* array with all devices */
+extern int *netdev_minors_used; /* array with pids to all the devices */
 
 /* for now we use only one, but in future we will use one for every device */
 /* TODO this structure will need a semafor/spinlock */
 struct netdev_data {
     /* TODO might need to use uint32_t for the sake of network communication */
     unsigned int nlpid; /* pid of the process that created this device */
-    long curseq; /* last used sequence number for this device, 0 is not used */
     bool active; /* set to false if netlink connection is lost */
     bool dummy; /* defines if this is a server device or a dummy one */
     char *devname; /* name of the device provided by the process */
     atomic_t users; /* counter of threads using this objecto */
+    atomic_t curseq; /* last used sequence number for this device, 0 is not used */
     struct cdev *cdev; /* internat struct representing char devices */
     struct device *device;
     struct hlist_node hnode; /* to use with hastable */
