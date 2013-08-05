@@ -24,9 +24,6 @@ struct proxy_dev {
     int remote_minor;
     int dummy_major;
     int dummy_minor;
-    struct nlmsghdr *nlh; /* for reusing */
-    struct msghdr *msgh; /* for reusing */
-    struct iovec *iov; /* for reusing */
 };
 
 int proxy_netlink_setup(struct proxy_dev *pdev);
