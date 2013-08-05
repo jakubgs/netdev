@@ -149,37 +149,41 @@ int netlink_send_msg(
     return 1; /* success */
 }
 
-struct netlink_message * netlink_recv(struct proxy_dev *pdev) {
-    struct netlink_message *nlmsg = NULL;
-    int bytes;
+struct nlmsghdr * netlink_recv(
+    struct proxy_dev *pdev)
+{
+    struct nlmsghdr *nlh = NULL;
+    struct msghdr msgh = {0};
+    struct iovec iov = {0};
 
-    bytes = recvmsg(pdev->nl_fd, pdev->msgh, 0);
+    nlh = malloc(NLMSG_SPACE(1024));
+    memset(nlh, 0, NLMSG_SPACE(1024));
+    nlh->nlmsg_len = NLMSG_SPACE(1024); /* struct size + payload */
 
-    if ( bytes <= -1 ) {
-        perror("netlink_recv(recvmsg)");
+    /* netlink header is our payload */
+    iov.iov_base = (void *)nlh;
+    iov.iov_len = nlh->nlmsg_len;
+    msgh.msg_iov = &iov; /* this normally is an array of */
+    msgh.msg_iovlen = 1;
+
+    /* the minimum is the size of the nlmsghdr alone */
+    if (!recvall(pdev->nl_fd, &msgh, sizeof(*nlh))) {
+        printf("netlink_recv: failed to read message");
+        free(nlh);
         return NULL;
     }
 
-    nlmsg = malloc(sizeof(*nlmsg));
-    if (!nlmsg) {
-        perror("netlink_recv(malloc)");
-    }
+    printf("netlink_recv: msgtype = %d,tsize = %d\n",
+            nlh->nlmsg_type,
+            nlh->nlmsg_len);
 
-    nlmsg->msgtype = pdev->nlh->nlmsg_type;
-    nlmsg->size = pdev->nlh->nlmsg_len;
-    nlmsg->payload = NLMSG_DATA(pdev->nlh);
-
-    printf("netlink_recv: msgtype = %d\n\tsize = %zu\n",
-            nlmsg->msgtype,
-            nlmsg->size);
-
-    return nlmsg;
+    return nlh;
 }
 
 int netlink_reg_dummy_dev(
     struct proxy_dev *pdev)
 {
-    return netlink_send(pdev,
+    return netlink_send_msg(pdev,
                         pdev->dummy_dev_name,
                         sizeof(pdev->dummy_dev_name),
                         MSGT_CONTROL_REG_DUMMY,
@@ -189,7 +193,7 @@ int netlink_reg_dummy_dev(
 int netlink_reg_remote_dev(
     struct proxy_dev *pdev)
 {
-    return netlink_send(pdev,
+    return netlink_send_msg(pdev,
                         pdev->remote_dev_name,
                         sizeof(pdev->remote_dev_name),
                         MSGT_CONTROL_REG_SERVER,
@@ -199,7 +203,7 @@ int netlink_reg_remote_dev(
 int netlink_unregister_dev(
     struct proxy_dev *pdev)
 {
-    return netlink_send(pdev,
+    return netlink_send_msg(pdev,
                         NULL, /* no payload */
                         0, /* 0 payload size */
                         MSGT_CONTROL_UNREGISTER,
