@@ -129,10 +129,12 @@ void proxy_server(int connfd)
 
     /* setup a netlink connection with the kernel driver, rest is pointless
      * if we can't connect to the kernel driver */
+    /*
     if (!netlink_setup(pdev)) {
         printf("proxy_server: failed to setup netlink socket!\n");
         return;
     }
+    */
 
     /* connect to the client */
     if (!conn_client(pdev)) {
@@ -147,10 +149,12 @@ void proxy_server(int connfd)
     }
 
     /* register a dummy device with the kernel */
+    /*
     if (!netlink_reg_remote_dev(pdev)) {
         printf("proxy_server: failed to register device on the server!\n");
         return;
     }
+    */
 
     /* start loop that will forward all file operations */
     if (!proxy_loop(pdev)) {
@@ -228,25 +232,21 @@ int proxy_handle_remote(struct proxy_dev *pdev)
  * operations so I will ignore other possibilities */
 int proxy_handle_netlink(struct proxy_dev *pdev)
 {
-    struct netlink_message *nlmsg = NULL;
+    struct nlmsghdr *nlh = NULL;
 
-    nlmsg = netlink_recv(pdev);
+    nlh = netlink_recv(pdev);
 
-    if (!nlmsg) {
+    if (!nlh) {
         printf("proxy_handle_netlink: failed to receive message\n");
         return 0; /* failure */
     }
 
-    if (nlmsg->msgtype > MSGT_FO_START && nlmsg->msgtype < MSGT_FO_END ) {
+    if (nlh->nlmsg_type > MSGT_FO_START && nlh->nlmsg_type < MSGT_FO_END ) {
         /* TODO send to server */
-        netlink_send(pdev,
-                    (void*)pdev->nlh,
-                    pdev->nlh->nlmsg_len,
-                    nlmsg->msgtype,
-                    0);
+        netlink_send(pdev, nlh);
     } else {
         printf("proxy_handle_netlink: unknown message type: %d\n",
-                nlmsg->msgtype);
+                nlh->nlmsg_type);
         return 0; /* failure */
     }
 
