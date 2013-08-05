@@ -4,6 +4,8 @@
 #include "netlink.h"
 #include "protocol.h"
 #include "netprotocol.h"
+#include "conn.h"
+
 int netlink_setup(
     struct proxy_dev *pdev)
 {
@@ -21,13 +23,8 @@ int netlink_setup(
     /* allocate memory fo addreses and zero them out */
     pdev->nl_src_addr = malloc(sizeof(*pdev->nl_src_addr));
     pdev->nl_dst_addr = malloc(sizeof(*pdev->nl_dst_addr));
-    pdev->msgh=         malloc(sizeof(*pdev->msgh));
-    pdev->nlh =         malloc(NLMSG_SPACE(MAX_PAYLOAD)); /* TODO */
-    pdev->iov =         malloc(NLMSG_SPACE(MAX_PAYLOAD)); /* TODO */
     memset(pdev->nl_src_addr, 0, sizeof(*pdev->nl_src_addr));
     memset(pdev->nl_dst_addr, 0, sizeof(*pdev->nl_dst_addr));
-    memset(pdev->msgh, 0, sizeof(*pdev->msgh));
-    memset(pdev->nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
 
     /* set up source address: this process, for bind */
     pdev->nl_src_addr->nl_family = AF_NETLINK;
@@ -76,15 +73,6 @@ int netlink_send(
     if (buff) {
         memcpy(NLMSG_DATA(pdev->nlh), buff, bsize);
     }
-
-    /* netlink header is our payload */
-    pdev->iov->iov_base = (void *)pdev->nlh;
-    pdev->iov->iov_len = pdev->nlh->nlmsg_len;
-
-    pdev->msgh->msg_name = (void *)pdev->nl_dst_addr;
-    pdev->msgh->msg_namelen = sizeof(*pdev->nl_dst_addr);
-    pdev->msgh->msg_iov = pdev->iov; /* this normally is an array of */
-    pdev->msgh->msg_iovlen = 1; /* TODO, we won't always use just one */
 
     /* send everything */
     if ( sendmsg(pdev->nl_fd, pdev->msgh, 0) == -1 ) {
