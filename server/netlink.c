@@ -52,55 +52,98 @@ int netlink_setup(
 
 int netlink_send(
     struct proxy_dev *pdev,
+    struct nlmsghdr *nlh)
+{
+    struct msghdr msgh = {0};
+    struct iovec iov = {0};
+
+    if (!nlh) {
+        printf("netlink_send: nlh is NULL\n");
+        return 0; /* failure */
+    }
+
+    printf("netlink_send: sending message to kernel\n");
+    printf("netlink_send: buff = %s, bsize = %d\n",
+            (char*)NLMSG_DATA(nlh),
+            nlh->nlmsg_len);
+    printf("netlink_send: nlh->nlmsg_pid = %d\n", pdev->pid);
+    
+    /* netlink header is our payload */
+    iov.iov_base = (void *)nlh;
+    iov.iov_len = nlh->nlmsg_len;
+
+    msgh.msg_name = (void *)pdev->nl_dst_addr;
+    msgh.msg_namelen = sizeof(*pdev->nl_dst_addr);
+    msgh.msg_iov = &iov; /* this normally is an array of */
+    msgh.msg_iovlen = 1; /* TODO, we won't always use just one */
+
+    printf("netlink_send: nlh->nlmsg_len = %d\n", nlh->nlmsg_len);
+
+    if (!sendall(pdev->nl_fd, &msgh, nlh->nlmsg_len)) {
+        printf("netlink_send: faile to receive message\n");
+    }
+
+    free(nlh);
+    return 1; /* success */
+}
+
+int netlink_send_msg(
+    struct proxy_dev *pdev,
     void *buff,
     size_t bsize,
     int msgtype,
     int flags)
 {
     struct nlmsgerr *msgerr = NULL;
+    struct nlmsghdr *nlh = NULL;
 
     printf("netlink_send: sending message to kernel\n");
     printf("netlink_send: buff = %s, bsize = %zu\n", (char*)buff, bsize);
+    printf("netlink_send: nlh->nlmsg_pid = %d\n", pdev->pid);
+    
+    nlh = malloc(NLMSG_SPACE(bsize));
+    memset(nlh, 0, NLMSG_SPACE(bsize));
 
-    pdev->nlh->nlmsg_len = NLMSG_SPACE(bsize); /* struct size + payload */
-    pdev->nlh->nlmsg_pid = pdev->pid;
-    printf("netlink_send: nlh->nlmsg_pid = %d\n", pdev->nlh->nlmsg_pid);
-    pdev->nlh->nlmsg_type = msgtype;
+    nlh->nlmsg_len = NLMSG_SPACE(bsize); /* struct size + payload */
+    nlh->nlmsg_pid = pdev->pid;
+    nlh->nlmsg_type = msgtype;
     /* delivery confirmation with NLMSG_ERROR and error field set to 0 */
-    pdev->nlh->nlmsg_flags = flags | NLM_F_ACK;
+    nlh->nlmsg_flags = flags | NLM_F_ACK;
 
-    /* TODO more data about device */
+    /* TODO check if we can't just assign the pointer */
     if (buff) {
-        memcpy(NLMSG_DATA(pdev->nlh), buff, bsize);
+        printf("netlink_send: memcpy of buff\n");
+        memcpy(NLMSG_DATA(nlh), buff, bsize);
     }
 
     /* send everything */
-    if ( sendmsg(pdev->nl_fd, pdev->msgh, 0) == -1 ) {
-        perror("netlink_send(sendmsg)");
+    if (!netlink_send(pdev, nlh)) {
+        printf("netlink_send: faile to send message\n");
         return 0; /* failure */
     }
-
     /* get confirmation of delivery */
-    if ( recvmsg(pdev->nl_fd, pdev->msgh, 0) == -1 ) {
-        perror("netlink_send(recvmsg)");
+    if ((nlh = netlink_recv(pdev)) == NULL) {
+        printf("netlink_send: failed to receive confirmation\n");
         return 0; /* failure */
-    } else {
-        if ( pdev->nlh->nlmsg_type == NLMSG_ERROR ) {
-            printf("netlink_send: nlmsgerr size = %d\n",
-                    pdev->nlh->nlmsg_len);
-            msgerr = ((struct nlmsgerr*)NLMSG_DATA(pdev->nlh));
-            if (msgerr->error != 0) {
-                printf("netlink_send: delivery failure!\n");
-                printf("netlink_send: msgerr->error = %d\n",
-                        ntohl(msgerr->error));
-                return 0; /* failure */
-            } else {
-                printf("netlink_send: delivery success!\n");
-            }
-        } else {
-            printf("netlink_send: next message was not confirmation!\n");
+    } 
+
+    /* check confirmation */
+    if ( nlh->nlmsg_type == NLMSG_ERROR ) {
+        printf("netlink_send: nlmsgerr size = %d\n",
+                nlh->nlmsg_len);
+        msgerr = ((struct nlmsgerr*)NLMSG_DATA(nlh));
+        /* TODO free nlh */
+        if (msgerr->error != 0) {
+            printf("netlink_send: delivery failure!\n");
+            printf("netlink_send: msgerr->error = %d\n",
+                    msgerr->error);
             return 0; /* failure */
+        } else {
+            printf("netlink_send: delivery success!\n");
         }
+    } else {
+        printf("netlink_send: next message was not confirmation!\n");
+        return 0; /* failure */
     }
 
     return 1; /* success */
