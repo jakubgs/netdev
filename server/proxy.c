@@ -83,14 +83,6 @@ void proxy_client(struct proxy_dev *pdev)
     }
     */
 
-    /* send protocol version matches */
-    /*
-    if (!conn_send_version(pdev)) {
-        printf("proxy_client: wrong protocol version!\n");
-        return;
-    }
-    */
-
     /* send a device registration request to the server */
     /*
     if (!conn_send_dev_reg(pdev)) {
@@ -145,12 +137,6 @@ void proxy_server(int connfd)
     /* connect to the client */
     if (!conn_client(pdev)) {
         printf("proxy_server: failed to connect to the server!\n");
-        return;
-    }
-
-    /* receive protocol version from client and check if it matches */
-    if (!conn_recv_version(pdev)) {
-        printf("proxy_server: wrong protocol version!\n");
         return;
     }
 
