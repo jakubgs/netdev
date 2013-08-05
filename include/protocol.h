@@ -4,6 +4,9 @@
 /* this will be provided by the name variable in netdev_data struct */
 #define NETDEV_NAME             "netdev"
 
+/* this number will be increased every time the core protocol changed */
+#define NETDEV_PROTOCOL_VERSION 1
+
 /* let the kernel decide the major number */
 #define NETDEV_MAJOR            0
 
