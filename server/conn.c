@@ -108,6 +108,7 @@ int conn_recv_dev_reg(struct proxy_dev *pdev) {
 /* size is the minimum that should be read */
 int recvall(int conn_fd, struct msghdr *msgh, int size) {
     int rvalue = 0, bytes = 0;
+    int i = 0;
     printf("recvall: receiving bytes = %d\n", size);
 
     do {
@@ -115,27 +116,36 @@ int recvall(int conn_fd, struct msghdr *msgh, int size) {
         fprintf(stderr, "recvmsg: rvalue = %d\n", rvalue);
         if (rvalue == -1) {
             perror("recvall(recvmsg)");
-            return 0; /* falure */
+            return -1; /* falure */
         }
         bytes += rvalue;
+        if (i++ == 10) {
+            printf("recvall: pointless\n");
+            return -1;
+        }
     } while (bytes < size);
 
-    return 1; /* success */
+    return 0; /* success */
 }
 
 int sendall(int conn_fd, struct msghdr *msgh, int size) {
     int rvalue = 0, bytes = 0;
-    printf("recvall: sending bytes = %d\n", size);
+    int i = 0;
+    printf("sendall: sending bytes = %d\n", size);
 
     do {
         rvalue = sendmsg(conn_fd, msgh, 0);
         fprintf(stderr, "sendall: rvalue = %d\n", rvalue);
         if (rvalue == -1) {
-            perror("recvall(sendmsg)");
-            return 0; /* falure */
+            perror("sendmsg(sendmsg)");
+            return -1; /* falure */
         }
         bytes += rvalue;
+        if (i++ == 10) {
+            printf("sendall: pointless\n");
+            return -1;
+        }
     } while (bytes != size);
 
-    return 1; /* success */
+    return 0; /* success */
 }
