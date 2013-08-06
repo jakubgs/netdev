@@ -17,7 +17,7 @@ int netlink_setup(
     /* check if socket was actually created */
     if ( pdev->nl_fd < 0 ) {
         perror("netlink_setup(socket setup)");
-        return 0;
+        return -1;
     }
 
     /* allocate memory fo addreses and zero them out */
@@ -42,12 +42,12 @@ int netlink_setup(
 
     if ( rvalue < 0 ) {
         perror("netlink_setup(binding socket)");
-        return 0; /* failure */
+        return -1; /* failure */
     }
 
     printf("netlink_setup: complete\n");
     /* connect is not needed since we are not using TCP but a raw socket */
-    return 1; /* success */
+    return 0; /* success */
 }
 
 int netlink_send(
@@ -59,7 +59,7 @@ int netlink_send(
 
     if (!nlh) {
         printf("netlink_send: nlh is NULL\n");
-        return 0; /* failure */
+        return -1; /* failure */
     }
 
     printf("netlink_send: sending message to kernel\n");
@@ -84,7 +84,7 @@ int netlink_send(
     }
 
     free(nlh);
-    return 1; /* success */
+    return 0; /* success */
 }
 
 int netlink_send_msg(
@@ -117,14 +117,14 @@ int netlink_send_msg(
     }
 
     /* send everything */
-    if (!netlink_send(pdev, nlh)) {
+    if (netlink_send(pdev, nlh) == -1) {
         printf("netlink_send: faile to send message\n");
-        return 0; /* failure */
+        return -1; /* failure */
     }
     /* get confirmation of delivery */
     if ((nlh = netlink_recv(pdev)) == NULL) {
         printf("netlink_send: failed to receive confirmation\n");
-        return 0; /* failure */
+        return -1; /* failure */
     } 
 
     /* check confirmation */
@@ -137,16 +137,16 @@ int netlink_send_msg(
             printf("netlink_send: delivery failure!\n");
             printf("netlink_send: msgerr->error = %d\n",
                     msgerr->error);
-            return 0; /* failure */
+            return -1; /* failure */
         } else {
             printf("netlink_send: delivery success!\n");
         }
     } else {
         printf("netlink_send: next message was not confirmation!\n");
-        return 0; /* failure */
+        return -1; /* failure */
     }
 
-    return 1; /* success */
+    return 0; /* success */
 }
 
 struct nlmsghdr * netlink_recv(
