@@ -128,7 +128,7 @@ struct proxy_dev ** read_config(char *filename, int *count) {
 
     /* TODO this should read data from a config files and fill
      * pdev structures based on that */
-    pdevs[0]->rm_ipaddr = "192.168.1.2";
+    pdevs[0]->rm_ipaddr = "192.168.1.3";
     pdevs[0]->rm_portaddr = NETDEV_SERVER_PORT;
     pdevs[0]->remote_dev_name = "urandom";
     pdevs[0]->remote_major = 1;
@@ -139,26 +139,30 @@ struct proxy_dev ** read_config(char *filename, int *count) {
 }
 
 int main(int argc, char *argv[]) {
-    int pid, dev_count, i;
+    int pid, dev_count, i, port = NETDEV_SERVER_PORT;
     struct proxy_dev **pdevs = NULL;
 
-    if (!(pdevs = read_config(NULL, &dev_count))) {
-        return 1;
-    }
+    if (argc == 2) {
+        port = atoi(argv[1]);
 
-    /* to run waitpid for all forked proxies */
-    signal(SIGCHLD, parent_sig_chld);
+        if (!(pdevs = read_config(NULL, &dev_count))) {
+            return 1;
+        }
 
-    for ( i = 0 ; i < dev_count ; i++ ) {
-        if ( ( pid = fork() ) == 0 ) {
-            proxy_client(pdevs[i]);
-            exit(0);
-        } else if ( pid < 0 ) {
-            perror("main: failed to fork");
+       /* to run waitpid for all forked proxies */
+        signal(SIGCHLD, parent_sig_chld);
+
+        for ( i = 0 ; i < dev_count ; i++ ) {
+            if ( ( pid = fork() ) == 0 ) {
+                proxy_client(pdevs[i]);
+                exit(0);
+            } else if ( pid < 0 ) {
+                perror("main: failed to fork");
+            }
         }
     }
 
-    if ( netdev_listener() ) {
+    if ( netdev_listener(port) ) {
         printf("netdev: could not start listener\n");
     }
 
