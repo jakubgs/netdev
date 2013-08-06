@@ -3,6 +3,7 @@
 #include <unistd.h>        /* close, getpid                    */
 #include <sys/prctl.h>      /* prctl */
 #include <signal.h>         /* signal */
+#include <errno.h>
 
 #include "proxy.h"
 #include "protocol.h"
@@ -25,9 +26,9 @@ int proxy_setup_unixsoc(struct proxy_dev *pdev)
 {
     if (socketpair(AF_LOCAL, SOCK_STREAM, 0, pdev->us_fd) == -1) {
         perror("proxy_setup_unixsoc");
-        return 0; /* failure */
+        return -1; /* failure */
     }
-    return 1; /* success */
+    return 0; /* success */
 }
 
 struct proxy_dev * proxy_alloc_dev(int connfd)
@@ -63,50 +64,52 @@ void proxy_client(struct proxy_dev *pdev)
     proxy_setup_signals();
     printf("proxy_client: starting connection to server, pid = %d\n", pdev->pid);
 
-    if (!proxy_setup_unixsoc(pdev)) {
+    if (proxy_setup_unixsoc(pdev) == -1) {
         printf("proxy_client: failed to setup control socket\n");
         return;
     }
 
     /* setup a netlink connection with the kernel driver, rest is
      * pointless if we can't connect with the kernel driver */
-    if (!netlink_setup(pdev)) {
+    /*
+    if (netlink_setup(pdev) == -1) {
         printf("proxy_client: failed to setup netlink socket!\n");
         return;
     }
+    */
 
     /* connect to the server */
-    /*
-    if (!conn_server(pdev)) {
+    if (conn_server(pdev) == -1) {
         printf("proxy_client: failed to connect to the server!\n");
         return;
     }
-    */
 
     /* send a device registration request to the server */
+    if (conn_send_dev_reg(pdev) == -1) {
+        printf("proxy_client: failed to register device on the server!\n");
+        return;
+    }
+
+    /* register a dummy device with the kernel */
     /*
-    if (!conn_send_dev_reg(pdev)) {
+    if (netlink_reg_dummy_dev(pdev) == -1) {
         printf("proxy_client: failed to register device on the server!\n");
         return;
     }
     */
 
-    /* register a dummy device with the kernel */
-    if (!netlink_reg_dummy_dev(pdev)) {
-        printf("proxy_client: failed to register device on the server!\n");
-        return;
-    }
-
     /* start loop that will forward all file operations */
-    if (!proxy_loop(pdev)) {
+    if (proxy_loop(pdev) == -1) {
         printf("proxy_client: loop broken\n");
     }
 
+    /*
     if (!netlink_unregister_dev(pdev)) {
         printf("proxy_client: failed to unregister device!\n");
     }
+    */
 
-    /* TODO free proxy_dev */
+    free(pdev);
     return;
 }
 
@@ -122,7 +125,7 @@ void proxy_server(int connfd)
     }
     printf("proxy_server: starting serving client, pid = %d\n", pdev->pid);
 
-    if (!proxy_setup_unixsoc(pdev)) {
+    if (proxy_setup_unixsoc(pdev) == -1) {
         printf("proxy_client: failed to setup control socket\n");
         return;
     }
@@ -130,42 +133,46 @@ void proxy_server(int connfd)
     /* setup a netlink connection with the kernel driver, rest is pointless
      * if we can't connect to the kernel driver */
     /*
-    if (!netlink_setup(pdev)) {
+    if (netlink_setup(pdev) == -1) {
         printf("proxy_server: failed to setup netlink socket!\n");
         return;
     }
     */
 
     /* connect to the client */
-    if (!conn_client(pdev)) {
+    if (conn_client(pdev) == -1) {
         printf("proxy_server: failed to connect to the server!\n");
         return;
     }
 
     /* receive a device registration request */
-    if (!conn_recv_dev_reg(pdev)) {
+    if (conn_recv_dev_reg(pdev) == -1) {
         printf("proxy_server: failed to register device on the server!\n");
         return;
     }
 
     /* register a dummy device with the kernel */
     /*
-    if (!netlink_reg_remote_dev(pdev)) {
+    if (netlink_reg_remote_dev(pdev) == -1) {
         printf("proxy_server: failed to register device on the server!\n");
         return;
     }
     */
 
     /* start loop that will forward all file operations */
-    if (!proxy_loop(pdev)) {
+    if (proxy_loop(pdev) == -1) {
         printf("proxy_server: loop broken\n");
     }
 
-    if (!netlink_unregister_dev(pdev)) {
+    /*
+    if (netlink_unregister_dev(pdev) == -1) {
         printf("proxy_server: failed to unregister device!\n");
     }
+    */
 
-    /* TODO free proxy_data */
+    free(pdev);
+    /* close the socket completely */
+    close(connfd);
     return;
 }
 
@@ -190,15 +197,16 @@ int proxy_loop(struct proxy_dev *pdev)
                             NULL,   /* no exception fd */
                             NULL)   /* no timeout */
                             ) == -1 ) {
+            printf("proxy_loop(select): errno = %d\n", errno);
             perror("proxy_loop(select)");
-            return 0; /* failure */
+            return -1; /* failure */
         }
         printf("proxy_loop: one of data sources is ready!\n");
 
         if (FD_ISSET(pdev->us_fd[0], &rset)) {
             printf("proxy_loop: unix socket data!\n");
             /* message from control unix socket */
-            if (!proxy_control(pdev)) {
+            if (proxy_control(pdev) == -1) {
                 break;
             }
             break;
@@ -215,17 +223,19 @@ int proxy_loop(struct proxy_dev *pdev)
         }
     }
 
-    return 1; /* success */
+    return 0; /* success */
 }
 
 int proxy_control(struct proxy_dev *pdev)
 {
-    return 1;
+    printf("proxy_control: not yet implemented\n");
+    return -1;
 }
 
 int proxy_handle_remote(struct proxy_dev *pdev)
 {
-    return 1;
+    printf("proxy_handle_remote: not yet implemented\n");
+    return -1;
 }
 
 /* at the moment the only thing the kernel will send are file
@@ -238,7 +248,7 @@ int proxy_handle_netlink(struct proxy_dev *pdev)
 
     if (!nlh) {
         printf("proxy_handle_netlink: failed to receive message\n");
-        return 0; /* failure */
+        return -1; /* failure */
     }
 
     if (nlh->nlmsg_type > MSGT_FO_START && nlh->nlmsg_type < MSGT_FO_END ) {
@@ -247,12 +257,12 @@ int proxy_handle_netlink(struct proxy_dev *pdev)
     } else {
         printf("proxy_handle_netlink: unknown message type: %d\n",
                 nlh->nlmsg_type);
-        return 0; /* failure */
+        return -1; /* failure */
     }
 
     /* if error or this message says it wants a response */
 
-    return 1; /* success */
+    return 0; /* success */
 }
 
 void proxy_sig_hup(int signo)
