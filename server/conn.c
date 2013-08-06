@@ -1,8 +1,10 @@
 #include <stdio.h> /* perror */
 #include <stdlib.h> /* malloc */
+#include <arpa/inet.h> /* inet_pton */
 
 #include "conn.h"
 #include "protocol.h"
+#include "debug.h"
 
 int conn_send(struct proxy_dev *pdev, struct netdev_header *ndhead) {
     struct msghdr msgh = {0};
@@ -67,19 +69,82 @@ struct netdev_header * conn_recv(struct proxy_dev *pdev) {
 }
 
 int conn_server(struct proxy_dev *pdev) {
-    struct netdev_header ndhead;
+    struct netdev_header *ndhead;
     int version = NETDEV_PROTOCOL_VERSION;
+    int rvalue = 0;
 
-    ndhead.msgtype = MSGT_CONTROL_VERSION;
-    ndhead.size    = sizeof(version);
-    ndhead.payload = malloc(ndhead.size);
-    memcpy(ndhead.payload, &version, ndhead.size);
+    /* create TCP/IP socket for connection with server */
+    pdev->rm_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (pdev->rm_fd == -1) {
+        perror("conn_server(socket)");
+        return -1;
+    }
 
-    return conn_send(pdev, &ndhead);
+    pdev->rm_addr = malloc(sizeof(*pdev->rm_addr));
+    if (!pdev->rm_addr) {
+        perror("conn_server(malloc)");
+        return -1;
+    }
+
+    pdev->rm_addr->sin_family = AF_INET;
+    pdev->rm_addr->sin_port = htons(pdev->rm_portaddr);
+    inet_pton(AF_INET, (void*)pdev->rm_ipaddr, &pdev->rm_addr->sin_addr);
+
+    printf("conn_server: connecting to: %s:%d\n",
+            pdev->rm_ipaddr, pdev->rm_portaddr);
+
+    rvalue = connect(pdev->rm_fd,
+                    (struct sockaddr*)pdev->rm_addr,
+                    sizeof(*pdev->rm_addr));
+    if (rvalue == -1) {
+        perror("conn_server(connect)");
+        return -1;
+    }
+
+    ndhead = malloc(sizeof(*ndhead));
+    if (!ndhead) {
+        perror("conn_server(malloc)");
+        return -1;
+    }
+    ndhead->msgtype = MSGT_CONTROL_VERSION;
+    ndhead->size    = sizeof(version);
+    ndhead->payload = malloc(ndhead->size);
+    memcpy(ndhead->payload, &version, ndhead->size);
+
+    /* send version */
+    if (conn_send(pdev, ndhead) == -1) {
+        printf("conn_server: failed to send version\n");
+        return -1;
+    }
+    free(ndhead->payload);
+    free(ndhead);
+    /* receive reply */
+    ndhead = conn_recv(pdev);
+
+    if (!ndhead) {
+        printf("conn_server: failed to receive version reply\n");
+        return -1;
+    }
+
+    if (ndhead->size != sizeof(int)) {
+        printf("conn_server: wrong payload size\n");
+        return -1;
+    }
+
+    version = *((int*)ndhead->payload);
+    if (version != 0) {
+        printf("conn_server: wrong version = %d\n", version);
+        return -1;
+    }
+
+    printf("conn_server: protocol version correct = %d\n", version);
+    return 0;
 }
 
 int conn_client(struct proxy_dev *pdev) {
     struct netdev_header *ndhead;
+    int version;
+    int reply = NETDEV_PROTOCOL_CORRECT; /* success = 0 */
 
     ndhead = conn_recv(pdev);
 
@@ -88,9 +153,27 @@ int conn_client(struct proxy_dev *pdev) {
         return -1; /* failure */
     }
 
-    
+    if (ndhead->size != sizeof(int)) {
+        printf("conn_client: wrong payload size!\n");
+        return -1; /* failure */
+    }
+ 
+    version = *((int*)ndhead->payload);
+    /* check version number */
+    if (version != NETDEV_PROTOCOL_VERSION) {
+        printf("conn_client: wrong protocol version = %d\n", version);
+        reply = NETDEV_PROTOCOL_VERSION;
+    }
 
-    return 0;
+    memcpy(ndhead->payload, &reply, sizeof(int));
+
+    if (conn_send(pdev, ndhead) == -1) {
+        printf("conn_client: failed to send version reply\n");
+        return -1;
+    }
+
+    printf("conn_client: protocol version correct = %d\n", version);
+    return reply; /* success */
 }
 
 int conn_send_dev_reg(struct proxy_dev *pdev) {
