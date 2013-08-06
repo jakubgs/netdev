@@ -7,17 +7,31 @@
 int conn_send(struct proxy_dev *pdev, struct netdev_header *ndhead) {
     struct msghdr msgh = {0};
     struct iovec iov = {0};
+    int size = sizeof(*ndhead) + ndhead->size;
+
+    debug("sending bytes = %zu", ndhead->size);
 
     msgh.msg_iov = &iov;
-    iov.iov_base = ndhead;
-    iov.iov_len = ndhead->size;
+    msgh.msg_iovlen = 1;
+    iov.iov_len = size;
+    iov.iov_base = malloc(size);
+    if (!iov.iov_base) {
+        perror("conn_send(malloc)");
+        return -1;
+    }
 
-    if (!sendall(pdev->rm_fd, &msgh, ndhead->size)) {
+    memcpy(iov.iov_base, ndhead, sizeof(*ndhead));
+    memcpy(iov.iov_base + sizeof(*ndhead), ndhead->payload, ndhead->size);
+
+    if (sendall(pdev->rm_fd, &msgh, size) == -1) {
         printf("conn_send: failed to send data\n");
         return -1; /* failure */
     }
 
-    return 1; /* success */
+    free(iov.iov_base);
+
+    debug("success");
+    return 0; /* success */
 }
 
 struct netdev_header * conn_recv(struct proxy_dev *pdev) {
@@ -29,28 +43,27 @@ struct netdev_header * conn_recv(struct proxy_dev *pdev) {
     ndhead = malloc(ndsize);
     
     msgh.msg_iov = &iov;
+    msgh.msg_iovlen = 1;
     iov.iov_base = (void *)ndhead;
     iov.iov_len = ndsize;
 
-    if (!recvall(pdev->rm_fd, &msgh, ndsize)) {
+    if (recvall(pdev->rm_fd, &msgh, ndsize) == -1) {
         printf("conn_recv: failed to read message header\n");
-        goto err;
+        return NULL;
     }
+    debug("received bytes = %zu", ndhead->size);
 
     ndhead->payload = malloc(ndhead->size);
     iov.iov_base = ndhead->payload;
     iov.iov_len = ndhead->size;
 
-    if (!recvall(pdev->rm_fd, &msgh, ndhead->size)) {
+    if (recvall(pdev->rm_fd, &msgh, ndhead->size) == -1) {
         printf("conn_recv: failed to read rest of the message\n");
-        goto err;
+        free(ndhead);
+        return NULL;
     }
 
     return ndhead;
-err:
-    free(ndhead->payload);
-    free(ndhead);
-    return NULL;
 }
 
 int conn_server(struct proxy_dev *pdev) {
