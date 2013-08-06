@@ -185,8 +185,8 @@ int proxy_loop(struct proxy_dev *pdev)
     for ( ; ; ) {
         FD_ZERO(&rset); /* clear all file descriptors */
         FD_SET(pdev->us_fd[0], &rset); /* add unix socket */
-        FD_SET(pdev->nl_fd, &rset); /* add netlink socket */
-        //FD_SET(pdev->rm_fd, &rset); /* add remote socket */
+        //FD_SET(pdev->nl_fd, &rset); /* add netlink socket */
+        FD_SET(pdev->rm_fd, &rset); /* add remote socket */
         maxfd = max(pdev->nl_fd, pdev->rm_fd);
         maxfd = max(maxfd, pdev->us_fd[0]);
         maxfd++; /* this is a count of how far the sockets go */
@@ -251,7 +251,8 @@ int proxy_handle_netlink(struct proxy_dev *pdev)
         return -1; /* failure */
     }
 
-    if (nlh->nlmsg_type > MSGT_FO_START && nlh->nlmsg_type < MSGT_FO_END ) {
+    if (nlh->nlmsg_type > MSGT_FO_START && 
+        nlh->nlmsg_type < MSGT_FO_END) {
         /* TODO send to server */
         netlink_send(pdev, nlh);
     } else {
