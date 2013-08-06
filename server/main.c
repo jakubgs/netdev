@@ -27,7 +27,9 @@ void parent_sig_chld(int signo) {
     return;
 }
 
-int netdev_listener() {
+int netdev_listener(
+    int port)
+{
     int listenfd, connfd;
     int rvalue;
     pid_t childpid;
@@ -46,7 +48,7 @@ int netdev_listener() {
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port   = htons(NETDEV_SERVER_PORT);
+    servaddr.sin_port   = htons(port);
 
     rvalue = bind(listenfd,
                 (SA *)&servaddr,
@@ -64,7 +66,7 @@ int netdev_listener() {
         return -1;
     }
 
-    printf("netdev_listener: starting listener\n");
+    printf("netdev_listener: starting listener at port: %d\n", port);
     while (1) {
         clilen = sizeof(cliaddr);
 
@@ -95,14 +97,14 @@ int netdev_listener() {
 
             proxy_server(connfd);
 
-            /* close the socket completely */
-            close(connfd);
             exit(0);
         }
 
         /* decreas the counter for new connection */
         close(connfd);
     }
+
+    return 0;
 }
 
 struct proxy_dev ** read_config(char *filename, int *count) {
