@@ -14,7 +14,7 @@ int conn_send(struct proxy_dev *pdev, struct netdev_header *ndhead) {
 
     if (!sendall(pdev->rm_fd, &msgh, ndhead->size)) {
         printf("conn_send: failed to send data\n");
-        return 0; /* failure */
+        return -1; /* failure */
     }
 
     return 1; /* success */
@@ -72,7 +72,7 @@ int conn_client(struct proxy_dev *pdev) {
 
     if (ndhead->msgtype != MSGT_CONTROL_VERSION) {
         printf("conn_client: wrong message type!\n");
-        return 0; /* failure */
+        return -1; /* failure */
     }
 
     
@@ -97,12 +97,12 @@ int conn_recv_dev_reg(struct proxy_dev *pdev) {
 
     if (ndhead->msgtype != MSGT_CONTROL_REG_SERVER) {
         printf("conn_recv_dev_reg: wrong message type!\n");
-        return 0; /* failure */
+        return -1; /* failure */
     }
 
 /* TODO */
 
-    return 1; /* success */
+    return 0; /* success */
 }
 
 /* size is the minimum that should be read */
