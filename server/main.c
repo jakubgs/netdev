@@ -128,12 +128,11 @@ struct proxy_dev ** read_config(char *filename, int *count) {
 
     /* TODO this should read data from a config files and fill
      * pdev structures based on that */
-    pdevs[0]->rm_ipaddr = "192.168.1.3";
+    pdevs[0]->rm_ipaddr = "192.168.1.13";
     pdevs[0]->rm_portaddr = NETDEV_SERVER_PORT;
-    pdevs[0]->remote_dev_name = "urandom";
-    pdevs[0]->remote_major = 1;
-    pdevs[0]->remote_minor = 9;
+    pdevs[0]->remote_dev_name = "/dev/urandom";
     pdevs[0]->dummy_dev_name = "netdev";
+    pdevs[0]->client = true; /* this is a client instance */
 
     return pdevs; /* success */
 }
@@ -163,7 +162,7 @@ int main(int argc, char *argv[]) {
     }
 
     if ( netdev_listener(port) ) {
-        printf("netdev: could not start listener\n");
+        printf("main: could not start listener\n");
     }
 
     return 0;
