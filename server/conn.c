@@ -4,6 +4,7 @@
 
 #include "conn.h"
 #include "protocol.h"
+#include "netlink.h"
 #include "debug.h"
 
 int conn_send(struct proxy_dev *pdev, struct netdev_header *ndhead) {
@@ -53,7 +54,7 @@ struct netdev_header * conn_recv(struct proxy_dev *pdev) {
         printf("conn_recv: failed to read message header\n");
         return NULL;
     }
-    debug("received bytes = %zu", ndhead->size);
+    debug("paylod size = %zu", ndhead->size);
 
     ndhead->payload = malloc(ndhead->size);
     iov.iov_base = ndhead->payload;
@@ -64,7 +65,8 @@ struct netdev_header * conn_recv(struct proxy_dev *pdev) {
         free(ndhead);
         return NULL;
     }
-
+    
+    debug("success");
     return ndhead;
 }
 
@@ -137,14 +139,15 @@ int conn_server(struct proxy_dev *pdev) {
         return -1;
     }
 
-    printf("conn_server: protocol version correct = %d\n", version);
+    printf("conn_server: connection successful, version correct = %d\n",
+            version);
     return 0;
 }
 
 int conn_client(struct proxy_dev *pdev) {
     struct netdev_header *ndhead;
     int version;
-    int reply = NETDEV_PROTOCOL_CORRECT; /* success = 0 */
+    int reply = NETDEV_PROTOCOL_SUCCESS; /* success = 0 */
 
     ndhead = conn_recv(pdev);
 
@@ -159,6 +162,7 @@ int conn_client(struct proxy_dev *pdev) {
     }
  
     version = *((int*)ndhead->payload);
+    printf("conn_client: received version = %d\n", version);
     /* check version number */
     if (version != NETDEV_PROTOCOL_VERSION) {
         printf("conn_client: wrong protocol version = %d\n", version);
@@ -167,6 +171,7 @@ int conn_client(struct proxy_dev *pdev) {
 
     memcpy(ndhead->payload, &reply, sizeof(int));
 
+    debug("sending reply");
     if (conn_send(pdev, ndhead) == -1) {
         printf("conn_client: failed to send version reply\n");
         return -1;
@@ -188,7 +193,9 @@ int conn_send_dev_reg(struct proxy_dev *pdev) {
 
 int conn_recv_dev_reg(struct proxy_dev *pdev) {
     struct netdev_header *ndhead;
+    int reply = NETDEV_PROTOCOL_SUCCESS;
 
+    debug("receiving device name");
     ndhead = conn_recv(pdev);
 
     if (ndhead->msgtype != MSGT_CONTROL_REG_SERVER) {
@@ -204,21 +211,19 @@ int conn_recv_dev_reg(struct proxy_dev *pdev) {
 /* size is the minimum that should be read */
 int recvall(int conn_fd, struct msghdr *msgh, int size) {
     int rvalue = 0, bytes = 0;
-    int i = 0;
-    printf("recvall: receiving bytes = %d\n", size);
+    debug("receiving bytes = %d", size);
 
     do {
         rvalue = recvmsg(conn_fd, msgh, 0);
-        fprintf(stderr, "recvmsg: rvalue = %d\n", rvalue);
+        debug("rvalue = %d", rvalue);
         if (rvalue == -1) {
             perror("recvall(recvmsg)");
             return -1; /* falure */
-        }
-        bytes += rvalue;
-        if (i++ == 10) {
-            printf("recvall: pointless\n");
+        } else if (rvalue == 0 ) {
+            debug("nothing sent");
             return -1;
         }
+        bytes += rvalue;
     } while (bytes < size);
 
     return 0; /* success */
@@ -226,22 +231,20 @@ int recvall(int conn_fd, struct msghdr *msgh, int size) {
 
 int sendall(int conn_fd, struct msghdr *msgh, int size) {
     int rvalue = 0, bytes = 0;
-    int i = 0;
-    printf("sendall: sending bytes = %d\n", size);
+    debug("sending bytes = %d", size);
 
     do {
         rvalue = sendmsg(conn_fd, msgh, 0);
-        fprintf(stderr, "sendall: rvalue = %d\n", rvalue);
+        debug("rvalue = %d", rvalue);
         if (rvalue == -1) {
             perror("sendmsg(sendmsg)");
             return -1; /* falure */
-        }
-        bytes += rvalue;
-        if (i++ == 10) {
-            printf("sendall: pointless\n");
+        } else if (rvalue == 0 ) {
+            debug("nothing sent");
             return -1;
         }
-    } while (bytes != size);
+        bytes += rvalue;
+    } while (bytes < size);
 
     return 0; /* success */
 }
