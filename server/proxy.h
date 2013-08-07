@@ -7,11 +7,17 @@
 
 #define MAX_PAYLOAD 1024 /* maximum payload size*/
 
+typedef enum {
+    true,
+    false
+} bool;
+
 struct proxy_dev {
     int pid; /* pid od the proxy process */
     int nl_fd; /* netlink file descryptor */
     int rm_fd; /* remote file descryptor */
     int us_fd[2]; /* unix socket pair, first one is for reading */
+    bool client; /* defines if this is a client or a server */
     struct sockaddr_nl *nl_src_addr;
     struct sockaddr_nl *nl_dst_addr;
     struct sockaddr_in *rm_addr;
@@ -20,10 +26,6 @@ struct proxy_dev {
     char *rm_ipaddr;
     char *remote_dev_name;
     char *dummy_dev_name;
-    int remote_major;
-    int remote_minor;
-    int dummy_major;
-    int dummy_minor;
 };
 
 int proxy_netlink_setup(struct proxy_dev *pdev);
