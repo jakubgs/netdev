@@ -11,6 +11,7 @@
 #include "helper.h"
 #include "netlink.h"
 #include "conn.h"
+#include "debug.h"
 
 void proxy_setup_signals()
 {
@@ -53,7 +54,7 @@ struct proxy_dev * proxy_alloc_dev(int connfd)
 
     pdev->rm_fd = connfd;
     pdev->pid   = getpid();
-    //pdev->us_fd = malloc(2 * sizeof(int)); /* space for unix file descriptors */
+    pdev->client = false; /* this is a server instance */
 
     return pdev;
 }
@@ -66,49 +67,38 @@ void proxy_client(struct proxy_dev *pdev)
 
     if (proxy_setup_unixsoc(pdev) == -1) {
         printf("proxy_client: failed to setup control socket\n");
-        return;
+        goto err;
     }
 
     /* setup a netlink connection with the kernel driver, rest is
      * pointless if we can't connect with the kernel driver */
-    /*
     if (netlink_setup(pdev) == -1) {
         printf("proxy_client: failed to setup netlink socket!\n");
-        return;
+        goto err;
     }
-    */
 
     /* connect to the server */
     if (conn_server(pdev) == -1) {
         printf("proxy_client: failed to connect to the server!\n");
-        return;
+        goto err;
     }
 
     /* send a device registration request to the server */
     if (conn_send_dev_reg(pdev) == -1) {
         printf("proxy_client: failed to register device on the server!\n");
-        return;
+        goto err;
     }
-
-    /* register a dummy device with the kernel */
-    /*
-    if (netlink_reg_dummy_dev(pdev) == -1) {
-        printf("proxy_client: failed to register device on the server!\n");
-        return;
-    }
-    */
 
     /* start loop that will forward all file operations */
     if (proxy_loop(pdev) == -1) {
         printf("proxy_client: loop broken\n");
     }
 
-    /*
     if (!netlink_unregister_dev(pdev)) {
         printf("proxy_client: failed to unregister device!\n");
     }
-    */
 
+err:
     free(pdev);
     return;
 }
@@ -132,12 +122,10 @@ void proxy_server(int connfd)
 
     /* setup a netlink connection with the kernel driver, rest is pointless
      * if we can't connect to the kernel driver */
-    /*
     if (netlink_setup(pdev) == -1) {
         printf("proxy_server: failed to setup netlink socket!\n");
         return;
     }
-    */
 
     /* connect to the client */
     if (conn_client(pdev) == -1) {
@@ -151,24 +139,14 @@ void proxy_server(int connfd)
         return;
     }
 
-    /* register a dummy device with the kernel */
-    /*
-    if (netlink_reg_remote_dev(pdev) == -1) {
-        printf("proxy_server: failed to register device on the server!\n");
-        return;
-    }
-    */
-
     /* start loop that will forward all file operations */
     if (proxy_loop(pdev) == -1) {
         printf("proxy_server: loop broken\n");
     }
 
-    /*
     if (netlink_unregister_dev(pdev) == -1) {
         printf("proxy_server: failed to unregister device!\n");
     }
-    */
 
     free(pdev);
     /* close the socket completely */
@@ -181,16 +159,19 @@ int proxy_loop(struct proxy_dev *pdev)
     int maxfd, nready;
     fd_set rset;
 
+    printf("proxy_loop: starting serving connections\n");
+
     /* Read message from kernel */
     for ( ; ; ) {
         FD_ZERO(&rset); /* clear all file descriptors */
         FD_SET(pdev->us_fd[0], &rset); /* add unix socket */
-        //FD_SET(pdev->nl_fd, &rset); /* add netlink socket */
+        FD_SET(pdev->nl_fd, &rset); /* add netlink socket */
         FD_SET(pdev->rm_fd, &rset); /* add remote socket */
         maxfd = max(pdev->nl_fd, pdev->rm_fd);
         maxfd = max(maxfd, pdev->us_fd[0]);
         maxfd++; /* this is a count of how far the sockets go */
 
+        printf("proxy_loop: back to waiting\n");
         if ((nready = select(maxfd, /* max number of file descriptors */
                             &rset,   /* read file descriptors */
                             NULL,   /* no write fd */
@@ -213,13 +194,15 @@ int proxy_loop(struct proxy_dev *pdev)
         }
 
         if (FD_ISSET(pdev->nl_fd, &rset)) {
-            /* message from kernel, send to remote */
-            proxy_handle_netlink(pdev);
+            if (proxy_handle_netlink(pdev) == -1) {
+                break;
+            }
         }
 
         if (FD_ISSET(pdev->rm_fd, &rset)) {
-            /* message from remote, send to kernel */
-            proxy_handle_remote(pdev);
+            if (proxy_handle_remote(pdev) == -1) {
+                break;
+            }   
         }
     }
 
@@ -234,8 +217,20 @@ int proxy_control(struct proxy_dev *pdev)
 
 int proxy_handle_remote(struct proxy_dev *pdev)
 {
-    printf("proxy_handle_remote: not yet implemented\n");
-    return -1;
+    struct netdev_header *ndhead = NULL;
+    int rvalue , error;
+    socklen_t len;
+
+    rvalue = getsockopt(pdev->rm_fd, SOL_SOCKET, SO_ERROR, &error, &len);
+    if (rvalue) {
+        return -1;
+    }
+
+    ndhead = conn_recv(pdev);
+    
+    debug("ndhead->msgtype = %d", ndhead->msgtype);
+
+    return 0;
 }
 
 /* at the moment the only thing the kernel will send are file
