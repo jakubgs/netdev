@@ -47,16 +47,33 @@ int fo_send(
     req->data = data;
     req->data_size = data_size;
     init_completion(&req->comp);
+    debug("req->size = %zu", req->size);
     debug("size = %zu", req->size);
 
+    /* add the req to a queue of requests */
     buffer = kzalloc(req->size, GFP_KERNEL);
 
+    buffer = fo_serialize(req, &bufflen);
     if (!buffer) {
         printk(KERN_ERR "fo_send: failed to allocate buffer\n");
         rvalue = -ENOMEM;
         goto out;
     }
 
+    fo_deserialize(buffer); /* TEST */
+    
+    if (!(req->seq = ndmgm_incseq(nddata))) {
+        printk(KERN_ERR "fo_send: failed to increment curseq\n");
+        rvalue = -EBUSY;
+        goto out;
+    }
+    /* send the file operation request */
+    rvalue = netlink_send(nddata,
+                            req->seq,
+                            req->msgtype,
+                            NLM_F_REQUEST,
+                            buffer,
+                            bufflen);
     memcpy(req->args, buffer, req->size);
 
     /* add the req to a queue of requests */
@@ -91,7 +108,7 @@ int fo_recv(
 
     nddata = ndmgm_find(nlh->nlmsg_pid);
     if (IS_ERR(nddata)) {
-        printk(KERN_ERR "fo_recv: failed to find device for pid = %d\n",
+        printk(KERN_ERR "fo_execute: failed to find device for pid = %d\n",
                 nlh->nlmsg_pid);
         return 1; /* failure */
     }
@@ -111,7 +128,7 @@ int fo_recv(
         data->nlh = nlh;
         data->skb = skb;
 
-        task = kthread_run(&fo_execute, (void*)data, "fo_execute");
+        task = kthread_run(&fo_execute, (void*)skb, "fo_execute");
         if (IS_ERR(task)) {
             printk("fo_recv: failed to create thread for file operation, error = %ld\n", PTR_ERR(task));
             rvalue = 1; /* failure */
@@ -128,33 +145,17 @@ int fo_complete(
     struct sk_buff *skb)
 {
     struct fo_req *req = NULL;
-    struct fo_req *recv_req = NULL;
 
     req = ndmgm_foreq_find(nddata, nlh->nlmsg_seq);
+
     if (!req) {
         printk(KERN_ERR "fo_complete: failed to obtain fo request\n");
         return 1; /* failure */
     }
 
-    debug("nlh->nlmsg_seq = %d", nlh->nlmsg_seq);
-    debug("nlh->nlmsg_len = %d", nlh->nlmsg_len);
-    debug("payload size = %d", nlmsg_len(nlh));
-
-    recv_req = fo_deserialize(NLMSG_DATA(nlh));
-    if (!recv_req) {
-        printk(KERN_ERR "fo_complete: failed to deserialize req\n");
-        return 1; /* failure */
-    }
-
-    /* give arguments and the payload to waiting file operation */
-    memcpy(req->args, recv_req->args, sizeof(req->args));
-    memcpy(req->data, recv_req->data, recv_req->data_size);
-
-    debug("completing file operation, seq = %ld", req->seq);
+    req->rvalue = -ENODATA;
     complete(&req->comp);
-    
-    kfree(recv_req);
-    kfree_skb(skb);
+
     return 0; /* success */
 }
 
