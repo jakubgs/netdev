@@ -12,7 +12,7 @@ int *netdev_minors_used;
 
 struct netdev_data * ndmgm_alloc_data(
     int nlpid,
-struct netdev_data * ndmgm_alloc_data(int nlpid, char *name)
+    char *name)
 {
     int err = 0;
     struct netdev_data *nddata; /* TODO needs to be in a list */
@@ -20,7 +20,7 @@ struct netdev_data * ndmgm_alloc_data(int nlpid, char *name)
     /* check if we have space for another device */
     /* TODO needs a reuse of device numbers from netdev_minors_used array */
     if ( netdev_count + 1 > NETDEV_MAX_DEVICES ) {
-        printk(KERN_ERR "netdev_create: max devices reached = %d\n",
+        printk(KERN_ERR "ndmgm_alloc_data: max devices reached = %d\n",
                         NETDEV_MAX_DEVICES);
         return 0;
     }
@@ -30,24 +30,24 @@ struct netdev_data * ndmgm_alloc_data(int nlpid, char *name)
      * For that GFP_ATOMIC would have to be used. */
     nddata = kzalloc(sizeof(*nddata), GFP_KERNEL);
     if (!nddata) {
-        printk(KERN_ERR "netdev_create: failed to allocate nddata\n");
+        printk(KERN_ERR "ndmgm_alloc_data: failed to allocate nddata\n");
         return NULL;
     }
 
     nddata->devname = kzalloc(strlen(name), GFP_KERNEL);
     if (!nddata->devname) {
-        printk(KERN_ERR "netdev_create: failed to allocate nddata\n");
+        printk(KERN_ERR "ndmgm_alloc_data: failed to allocate nddata\n");
         goto free_devname;
     }
 
     nddata->cdev = kzalloc(sizeof(*nddata->cdev), GFP_KERNEL);
     if (!nddata->cdev) {
-        printk(KERN_ERR "netdev_create: failed to allocate nddata->cdev\n");
+        printk(KERN_ERR "ndmgm_alloc_data: failed to allocate nddata->cdev\n");
         goto free_nddata;
     }
 
     if ((err = kfifo_alloc(&nddata->fo_queue, NETDEV_FO_QUEUE_SIZE, GFP_KERNEL))) {
-        printk(KERN_ERR "netdev_create: failed to allocate fo_queue\n");
+        printk(KERN_ERR "ndmgm_alloc_data: failed to allocate fo_queue\n");
         goto free_cdev;
     }
 
@@ -55,7 +55,7 @@ struct netdev_data * ndmgm_alloc_data(int nlpid, char *name)
                         sizeof(struct fo_req),
                         0, 0, NULL); /* no alignment, flags or constructor */
     if (!nddata->queue_pool) {
-        printk(KERN_ERR "netdev_create: failed to allocate queue_pool\n");
+        printk(KERN_ERR "ndmgm_alloc_data: failed to allocate queue_pool\n");
         goto free_fo_queue;
     }
 
@@ -78,7 +78,7 @@ free_nddata:
 }
 
 void ndmgm_free_data(
-void ndmgm_free_data(struct netdev_data *nddata)
+    struct netdev_data *nddata)
 {
     kmem_cache_destroy(nddata->queue_pool);
     kfifo_free(&nddata->fo_queue);
@@ -88,7 +88,7 @@ void ndmgm_free_data(struct netdev_data *nddata)
 }
 
 int ndmgm_free_queue(
-int ndmgm_free_queue(struct netdev_data *nddata)
+    struct netdev_data *nddata)
 {
     int size = 0;
     struct fo_req *req = NULL;
@@ -168,21 +168,21 @@ int ndmgm_incseq(struct netdev_data *nddata)
 /*  TODO all this shit will HAVE to use semafors if it has to work */
 int ndmgm_create_dummy(
     int nlpid,
-int ndmgm_create(int nlpid, char *name)
+    char *name)
 {
     int err = 0;
     struct netdev_data *nddata = NULL;
-                        netdev_count);
+    debug("creating dummy device: /dev/%s%d", name, netdev_count);
 
     if ( (nddata = ndmgm_alloc_data(nlpid, name)) == NULL ) {
-        printk(KERN_ERR "netdev_create: failed to create netdev_data\n");
+        printk(KERN_ERR "ndmgm_create_dummy: failed to create netdev_data\n");
         return 1;
     }
 
     cdev_init(nddata->cdev, &netdev_fops);
     nddata->cdev->owner = THIS_MODULE;
     nddata->cdev->dev = MKDEV(MAJOR(netdev_devno), netdev_count);
-    nddata->dummy = true; /* should be false for a server device */
+    nddata->dummy = true; /* should be true for a dummy device */
 
     /* tell the kernel the cdev structure is ready,
      * if it is not do not call cdev_add */
