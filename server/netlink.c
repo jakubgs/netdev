@@ -73,15 +73,11 @@ int netlink_send(
     iov.iov_base = (void *)nlh;
     iov.iov_len = nlh->nlmsg_len;
 
-    msgh.msg_name = (void *)pdev->nl_dst_addr;
-    msgh.msg_namelen = sizeof(*pdev->nl_dst_addr);
     msgh.msg_iov = &iov; /* this normally is an array of */
     msgh.msg_iovlen = 1; /* TODO, we won't always use just one */
 
-    printf("netlink_send: nlh->nlmsg_len = %d\n", nlh->nlmsg_len);
-
-    if (!sendall(pdev->nl_fd, &msgh, nlh->nlmsg_len)) {
-        printf("netlink_send: faile to receive message\n");
+    if (sendall(pdev->nl_fd, &msgh, nlh->nlmsg_len) == -1) {
+        printf("netlink_send: failed to receive message\n");
     }
 
     free(nlh);
@@ -98,9 +94,9 @@ int netlink_send_msg(
     struct nlmsgerr *msgerr = NULL;
     struct nlmsghdr *nlh = NULL;
 
-    printf("netlink_send: sending message to kernel\n");
-    printf("netlink_send: buff = %s, bsize = %zu\n", (char*)buff, bsize);
-    printf("netlink_send: nlh->nlmsg_pid = %d\n", pdev->pid);
+    debug("sending message to kernel");
+    debug("buff = %s, bsize = %zu", (char*)buff, bsize);
+    debug("nlh->nlmsg_pid = %d", pdev->pid);
     
     nlh = malloc(NLMSG_SPACE(bsize));
     memset(nlh, 0, NLMSG_SPACE(bsize));
@@ -160,20 +156,22 @@ struct nlmsghdr * netlink_recv(
 
     /* netlink header is our payload */
     iov.iov_base = (void *)nlh;
-    iov.iov_len = nlh->nlmsg_len;
+    iov.iov_len = sizeof(*nlh);
     msgh.msg_iov = &iov; /* this normally is an array of */
     msgh.msg_iovlen = 1;
 
     /* the minimum is the size of the nlmsghdr alone */
-    if (!recvall(pdev->nl_fd, &msgh, sizeof(*nlh))) {
-        printf("netlink_recv: failed to read message");
-        free(nlh);
-        return NULL;
+    if (recvall(pdev->nl_fd, &msgh, sizeof(*nlh)) == -1) {
+        printf("netlink_recv: failed to read message\n");
+        goto err;
     }
 
     debug("msgtype = %d, size = %d", nlh->nlmsg_type, nlh->nlmsg_len);
 
     return nlh;
+err:
+    free(nlh);
+    return NULL;
 }
 
 int netlink_reg_dummy_dev(
@@ -181,7 +179,7 @@ int netlink_reg_dummy_dev(
 {
     return netlink_send_msg(pdev,
                         pdev->dummy_dev_name,
-                        sizeof(pdev->dummy_dev_name),
+                        strlen(pdev->dummy_dev_name)+1,
                         MSGT_CONTROL_REG_DUMMY,
                         NLM_F_REQUEST);
 }
@@ -191,7 +189,7 @@ int netlink_reg_remote_dev(
 {
     return netlink_send_msg(pdev,
                         pdev->remote_dev_name,
-                        sizeof(pdev->remote_dev_name),
+                        strlen(pdev->remote_dev_name)+1,
                         MSGT_CONTROL_REG_SERVER,
                         NLM_F_REQUEST);
 }
