@@ -44,10 +44,10 @@ void netlink_recv(struct sk_buff *skb)
         case MSGT_CONTROL_VERSION:
             break;
         case MSGT_CONTROL_REG_DUMMY:
-            err = ndmgm_create(pid, (char*)nlmsg_data(nlh));
+            err = ndmgm_create_dummy(pid, (char*)nlmsg_data(nlh));
             break;
         case MSGT_CONTROL_REG_SERVER:
-            /* TODO create a netdev_data for real device */
+            err = ndmgm_create_server(pid, (char*)nlmsg_data(nlh));
             break;
         case MSGT_CONTROL_UNREGISTER:
             err = ndmgm_find_destroy(pid);
@@ -99,8 +99,8 @@ int netlink_send(
     struct sk_buff *skb_out;
     int rvalue;
 
-    debug("nddata->nlpid = %d", nddata->nlpid);
-    debug("bufflen = %zu", bufflen);
+    debug("msg type: %d, from pid: %d", msgtype, nddata->nlpid);
+    debug("msg size: %zu, message: %s", bufflen, buff);
 
     /* allocate space for message header and it's payload */
     skb_out = nlmsg_new(bufflen, GFP_KERNEL);
@@ -143,17 +143,6 @@ int netlink_send(
 free_skb:
     nlmsg_free(skb_out);
     return 0;
-}
-
-int netlink_send_fo(struct netdev_data *nddata, struct fo_req *req)
-{
-    /* increment the sequence number */
-    if (!(req->seq = ndmgm_incseq(nddata))) {
-        printk(KERN_ERR "netlink_send_fo: failed to increment sequence number\n");
-        return 0; /* failure */
-    }
-
-    return netlink_send(nddata, req->seq, req->msgtype, NLM_F_REQUEST, req->args, req->size);
 }
 
 int netlink_echo(int pid, int seq, char *msg)
