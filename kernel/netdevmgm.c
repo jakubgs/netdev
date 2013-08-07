@@ -229,7 +229,46 @@ free_nddata:
     return err;
 }
 
-int ndmgm_find_destroy(int nlpid)
+int ndmgm_create_server(
+    int nlpid,
+    char *name)
+{
+    struct netdev_data *nddata = NULL;
+    debug("creating server for: %s", name);
+
+    nddata = kzalloc(sizeof(*nddata), GFP_KERNEL);
+    if (!nddata) {
+        printk(KERN_ERR "ndmgm_create_server: failed to allocate nddata\n");
+        return 1;
+    }
+
+    nddata->devname = kzalloc(strlen(name), GFP_KERNEL);
+    if (!nddata->devname) {
+        printk(KERN_ERR "ndmgm_create_server: failed to allocate nddata\n");
+        goto free_nddata;
+    }
+
+    memcpy(nddata->devname, name, strlen(name)+1);
+    init_rwsem(&nddata->sem);
+    atomic_set(&nddata->curseq, 0);
+    nddata->nlpid = nlpid;
+    nddata->active = true;
+    nddata->dummy = false; /* should be false for a server device */
+
+    /* add the device to hashtable with all devices since it's ready */
+    ndmgm_get(nddata); /* increase count for hashtable */
+    hash_add(netdev_htable, &nddata->hnode, (int)nlpid);
+
+    /* TODO find cdev and device of the dev we are serving */
+
+    return 0; /* success */
+free_nddata:
+    ndmgm_free_data(nddata);
+    return 1;
+}
+
+int ndmgm_find_destroy(
+    int nlpid)
 {
     struct netdev_data *nddata = NULL;
     
