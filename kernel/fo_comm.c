@@ -176,27 +176,20 @@ int fo_complete(
 }
 
 /* this function will be executed as a new thread with kthread_run */
-int fo_execute(void *data)
+int fo_execute(
+    void *data)
 {
-    struct netdev_data *nddata = NULL;
-    struct nlmsghdr *nlh = NULL;
-    struct sk_buff *skb = NULL;
+    struct fo_data *fodata;
+    fodata = (struct fo_data*)data;
 
-    skb = data; /* cast to sk_buff */
-    nlh = nlmsg_hdr(skb);
-
-    nddata = ndmgm_find(nlh->nlmsg_pid);
-    if (IS_ERR(nddata)) {
-        printk(KERN_ERR "fo_execute: failed to find device for pid = %d\n",
-                nlh->nlmsg_pid);
-        do_exit(1); /* this is a thread */
-    }
-    ndmgm_get(nddata);
+    ndmgm_get(fodata->nddata);
 
     /* TODO execute appropriate file operation and then send back
      * the result to the server in userspace */
 
-    ndmgm_put(nddata);
+    ndmgm_put(fodata->nddata);
+
+    kfree_skb(fodata->skb);
     do_exit(0); /* success */
 }
 
