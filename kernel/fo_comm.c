@@ -1,5 +1,6 @@
 #include <linux/slab.h>
 #include <linux/kthread.h>
+#include <net/netlink.h>
 
 #include "fo.h"
 #include "protocol.h"
@@ -12,9 +13,16 @@
  * to the server process */
 /* TODO might require a struct that will also hold the wait queue to unblock waiting
  * send_req function once receiving loop gets the response */
-int fo_send(short msgtype, struct netdev_data *nddata, void *args, size_t size)
+int fo_send(
+    short msgtype,
+    struct netdev_data *nddata,
+    void *args,
+    size_t size,
+    void *data,
+    size_t data_size)
 {
     int rvalue = 1;
+    size_t bufflen = 0;
     void *buffer = NULL;
     struct fo_req *req = NULL;
 
@@ -36,6 +44,8 @@ int fo_send(short msgtype, struct netdev_data *nddata, void *args, size_t size)
     req->msgtype = msgtype;
     req->args = args;
     req->size = size;
+    req->data = data;
+    req->data_size = data_size;
     init_completion(&req->comp);
     debug("size = %zu", req->size);
 
@@ -55,11 +65,12 @@ int fo_send(short msgtype, struct netdev_data *nddata, void *args, size_t size)
     netlink_send_fo(nddata, req);
 
     /* wait for completion, it will be signaled once a reply is received */
+    debug("starting wait for file operation, seq = %ld", req->seq);
     wait_for_completion(&req->comp);
-    debug("returned from wait for file operation");
+    debug("returned from wait for file operation, seq = %ld", req->seq);
+
     rvalue = req->rvalue;
     debug("rvalue = %d", rvalue);
-
 out:
     kmem_cache_free(nddata->queue_pool, req);
     ndmgm_put(nddata);
