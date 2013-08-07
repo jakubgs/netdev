@@ -5,6 +5,7 @@
 #include "protocol.h"
 #include "netprotocol.h"
 #include "conn.h"
+#include "debug.h"
 
 int netlink_setup(
     struct proxy_dev *pdev)
@@ -15,7 +16,7 @@ int netlink_setup(
     pdev->nl_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_PROTOCOL);
 
     /* check if socket was actually created */
-    if ( pdev->nl_fd < 0 ) {
+    if (pdev->nl_fd < 0) {
         perror("netlink_setup(socket setup)");
         return -1;
     }
@@ -40,7 +41,7 @@ int netlink_setup(
                 (SA *)pdev->nl_src_addr,
                 sizeof(*pdev->nl_src_addr));
 
-    if ( rvalue < 0 ) {
+    if (rvalue < 0) {
         perror("netlink_setup(binding socket)");
         return -1; /* failure */
     }
@@ -62,11 +63,11 @@ int netlink_send(
         return -1; /* failure */
     }
 
-    printf("netlink_send: sending message to kernel\n");
-    printf("netlink_send: buff = %s, bsize = %d\n",
-            (char*)NLMSG_DATA(nlh),
+    debug("sending message to kernel");
+    debug("buff = %zu, bsize = %d",
+            *(size_t*)NLMSG_DATA(nlh),
             nlh->nlmsg_len);
-    printf("netlink_send: nlh->nlmsg_pid = %d\n", pdev->pid);
+    debug("nlh->nlmsg_pid = %d", pdev->pid);
     
     /* netlink header is our payload */
     iov.iov_base = (void *)nlh;
@@ -112,34 +113,31 @@ int netlink_send_msg(
 
     /* TODO check if we can't just assign the pointer */
     if (buff) {
-        printf("netlink_send: memcpy of buff\n");
+        printf("netlink_send_msg: memcpy of buff\n");
         memcpy(NLMSG_DATA(nlh), buff, bsize);
     }
 
     /* send everything */
     if (netlink_send(pdev, nlh) == -1) {
-        printf("netlink_send: faile to send message\n");
+        printf("netlink_send_msg: faile to send message\n");
         return -1; /* failure */
     }
     /* get confirmation of delivery */
     if ((nlh = netlink_recv(pdev)) == NULL) {
-        printf("netlink_send: failed to receive confirmation\n");
+        printf("netlink_send_msg: failed to receive confirmation\n");
         return -1; /* failure */
     } 
 
     /* check confirmation */
     if ( nlh->nlmsg_type == NLMSG_ERROR ) {
-        printf("netlink_send: nlmsgerr size = %d\n",
-                nlh->nlmsg_len);
+        debug("nlmsgerr size = %d", nlh->nlmsg_len);
         msgerr = ((struct nlmsgerr*)NLMSG_DATA(nlh));
         /* TODO free nlh */
         if (msgerr->error != 0) {
-            printf("netlink_send: delivery failure!\n");
-            printf("netlink_send: msgerr->error = %d\n",
-                    msgerr->error);
+            debug("delivery failure, msgerr->error = %d", msgerr->error);
             return -1; /* failure */
         } else {
-            printf("netlink_send: delivery success!\n");
+            debug("delivery success!");
         }
     } else {
         printf("netlink_send: next message was not confirmation!\n");
@@ -173,9 +171,7 @@ struct nlmsghdr * netlink_recv(
         return NULL;
     }
 
-    printf("netlink_recv: msgtype = %d,tsize = %d\n",
-            nlh->nlmsg_type,
-            nlh->nlmsg_len);
+    debug("msgtype = %d, size = %d", nlh->nlmsg_type, nlh->nlmsg_len);
 
     return nlh;
 }
