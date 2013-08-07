@@ -240,7 +240,6 @@ int ndmgm_find_destroy(int nlpid)
     }
 
     if (down_read_trylock(&netdev_htable_sem)) {
-        netdev_minors_used[MINOR(nddata->cdev->dev)] = 0;
         hash_del(&nddata->hnode);
         ndmgm_put(nddata);
 
@@ -250,36 +249,75 @@ int ndmgm_find_destroy(int nlpid)
     return ndmgm_destroy(nddata);
 }
 
-int ndmgm_destroy(struct netdev_data *nddata)
+int ndmgm_destroy(
+    struct netdev_data *nddata)
 {
+    int rvalue;
     debug("destroying device %s", nddata->devname);
     if (nddata) {
-        if (down_write_trylock(&nddata->sem)) {
-            nddata->active = false;
-
-            /* make sure all pending operations are completed */
-            if (ndmgm_free_queue(nddata)) {
-                printk(KERN_ERR "ndmgm_destroy: failed to free queue\n");
-                return 1; /* failure */
-            }
-            /* should never happen but better test for it */
-            if (ndmgm_refs(nddata) > 1) {
-                printk(KERN_ERR "ndmgm_destroy: more than one ref left: %d\n", ndmgm_refs(nddata));
-                return 1; /* failure */
-            }
-
-            device_destroy(netdev_class, nddata->cdev->dev);
-            cdev_del(nddata->cdev);
-
-            up_write(&nddata->sem); /* has to be unlocked before kfree */
-
-            ndmgm_free_data(nddata); /* finally free netdev_data */
-
-            netdev_count--;
-            return 0; /* success */
-        }
+        printk(KERN_ERR "ndmgm_destroy: nddata is NULL\n");
+        return 1; /* failure */
     }
-    printk(KERN_ERR "ndmgm_destroy: failed to destroy netdev_data\n");
+    
+    if (nddata->dummy == true) {
+        rvalue = ndmgm_destroy_dummy(nddata);
+    } else if (nddata->dummy == false) {
+        rvalue = ndmgm_destroy_server(nddata);
+    }
+
+    return rvalue;
+}
+
+int ndmgm_destroy_dummy(
+    struct netdev_data *nddata)
+{
+    if (down_write_trylock(&nddata->sem)) {
+        nddata->active = false;
+        netdev_minors_used[MINOR(nddata->cdev->dev)] = 0;
+
+        /* make sure all pending operations are completed */
+        if (ndmgm_free_queue(nddata)) {
+            printk(KERN_ERR "ndmgm_destroy_dummy: failed to free queue\n");
+            return 1; /* failure */
+        }
+        /* should never happen but better test for it */
+        if (ndmgm_refs(nddata) > 1) {
+            printk(KERN_ERR "ndmgm_destroy_dummy: more than one ref left: %d\n", ndmgm_refs(nddata));
+            return 1; /* failure */
+        }
+
+        device_destroy(netdev_class, nddata->cdev->dev);
+        cdev_del(nddata->cdev);
+
+        up_write(&nddata->sem); /* has to be unlocked before kfree */
+
+        ndmgm_free_data(nddata); /* finally free netdev_data */
+
+        netdev_count--;
+        return 0; /* success */
+    }
+    printk(KERN_ERR "ndmgm_destroy_dummy: failed to destroy netdev_data\n");
+    return 1; /* failure */
+}
+
+int ndmgm_destroy_server(
+    struct netdev_data *nddata)
+{
+    if (down_write_trylock(&nddata->sem)) {
+        nddata->active = false;
+
+        if (ndmgm_refs(nddata) > 1) {
+            printk(KERN_ERR "ndmgm_destroy_server: more than one ref left: %d\n", ndmgm_refs(nddata));
+            return 1; /* failure */
+        }
+
+        up_write(&nddata->sem); /* has to be unlocked before kfree */
+
+        kfree(nddata);
+
+        return 0; /* success */
+    }
+    printk(KERN_ERR "ndmgm_destroy_server: failed to destroy netdev_data\n");
     return 1; /* failure */
 }
 
@@ -296,7 +334,6 @@ int ndmgm_end(void)
         hash_for_each_safe(netdev_htable, i, tmp, nddata, hnode) {
             debug("deleting dev pid = %d",
                                 nddata->nlpid);
-            netdev_minors_used[MINOR(nddata->cdev->dev)] = 0;
             hash_del(&nddata->hnode); /* delete the element from table */
             ndmgm_put(nddata);
 
@@ -342,19 +379,22 @@ struct netdev_data* ndmgm_find(int nlpid)
     return NULL;
 }
 
-void ndmgm_get(struct netdev_data *nddata)
+void ndmgm_get(
+    struct netdev_data *nddata)
 {
     //debug("called from: %pS", __builtin_return_address(0));
     atomic_inc(&nddata->users);
 }
 
-void ndmgm_put(struct netdev_data *nddata)
+void ndmgm_put(
+    struct netdev_data *nddata)
 {
     //debug("called from: %pS", __builtin_return_address(0));
     atomic_dec(&nddata->users);
 }
 
-int ndmgm_refs(struct netdev_data *nddata)
+int ndmgm_refs(
+    struct netdev_data *nddata)
 {
     return atomic_read(&nddata->users);
 }
