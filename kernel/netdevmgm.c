@@ -10,6 +10,8 @@ static struct rw_semaphore netdev_htable_sem;
 unsigned int netdev_count;
 int *netdev_minors_used;
 
+struct netdev_data * ndmgm_alloc_data(
+    int nlpid,
 struct netdev_data * ndmgm_alloc_data(int nlpid, char *name)
 {
     int err = 0;
@@ -75,6 +77,7 @@ free_nddata:
     return NULL;
 }
 
+void ndmgm_free_data(
 void ndmgm_free_data(struct netdev_data *nddata)
 {
     kmem_cache_destroy(nddata->queue_pool);
@@ -84,6 +87,7 @@ void ndmgm_free_data(struct netdev_data *nddata)
     kfree(nddata);
 }
 
+int ndmgm_free_queue(
 int ndmgm_free_queue(struct netdev_data *nddata)
 {
     int size = 0;
@@ -162,19 +166,18 @@ int ndmgm_incseq(struct netdev_data *nddata)
 }
 
 /*  TODO all this shit will HAVE to use semafors if it has to work */
+int ndmgm_create_dummy(
+    int nlpid,
 int ndmgm_create(int nlpid, char *name)
 {
     int err = 0;
     struct netdev_data *nddata = NULL;
-    debug("creating device /dev/%s%d",
-                        name,
                         netdev_count);
 
     if ( (nddata = ndmgm_alloc_data(nlpid, name)) == NULL ) {
         printk(KERN_ERR "netdev_create: failed to create netdev_data\n");
         return 1;
     }
-    debug("nddata = %p", nddata);
 
     cdev_init(nddata->cdev, &netdev_fops);
     nddata->cdev->owner = THIS_MODULE;
