@@ -182,13 +182,47 @@ int conn_client(struct proxy_dev *pdev) {
 }
 
 int conn_send_dev_reg(struct proxy_dev *pdev) {
-    struct netdev_header ndhead;
+    struct netdev_header *ndhead;
+    int rvalue = 0;
 
-    ndhead.msgtype = MSGT_CONTROL_REG_SERVER;
-    ndhead.size    = strlen(pdev->remote_dev_name);
-    ndhead.payload = pdev->remote_dev_name;
+    ndhead = malloc(sizeof(*ndhead));
+    if (!ndhead) {
+        perror("conn_send_dev_reg(malloc)");
+        return -1;
+    }
 
-    return conn_send(pdev, &ndhead);
+    ndhead->msgtype = MSGT_CONTROL_REG_SERVER;
+    ndhead->size    = strlen(pdev->remote_dev_name)+1; /* plus null */
+    ndhead->payload = pdev->remote_dev_name; /* TODO */
+
+    debug("sending device name: %s", pdev->remote_dev_name);
+    if (conn_send(pdev, ndhead) == -1) {
+        printf("conn_send_dev_reg: failed to send device registration\n");
+        free(ndhead);
+        return -1;
+    }
+
+    free(ndhead);
+    debug("receiving reply");
+    ndhead = conn_recv(pdev);
+
+    if (!ndhead) {
+        printf("conn_send_dev_reg: failed to receive reply\n");
+        return -1;
+    }
+
+    rvalue = *((int*)ndhead->payload);
+    
+    if (rvalue != NETDEV_PROTOCOL_SUCCESS) {
+        printf("conn_send_dev_reg: server failed to register device\n");
+        return -1;
+    }
+
+    if (netlink_reg_dummy_dev(pdev) == -1) {
+        printf("proxy_client: failed to register device on the server!\n");
+        return -1;
+    }
+    return 0; /* success */
 }
 
 int conn_recv_dev_reg(struct proxy_dev *pdev) {
@@ -202,9 +236,32 @@ int conn_recv_dev_reg(struct proxy_dev *pdev) {
         printf("conn_recv_dev_reg: wrong message type!\n");
         return -1; /* failure */
     }
+    debug("correct message type");
 
-/* TODO */
+    pdev->remote_dev_name = malloc(ndhead->size);
+    if (!pdev->remote_dev_name) {
+        perror("conn_recv_dev_reg(malloc)");
+        return -1;
+    }
+    memcpy(pdev->remote_dev_name, ndhead->payload, ndhead->size);
 
+    debug("registering device: %s", pdev->remote_dev_name);
+    if (netlink_reg_remote_dev(pdev) == -1) {
+        printf("conn_recv_dev_reg: failed to register device: %s\n",
+                pdev->remote_dev_name);
+        return -1;
+    }
+
+    ndhead->payload = malloc(sizeof(reply));
+    memcpy(ndhead->payload, &reply, sizeof(reply));
+
+    debug("sending reply");
+    if (conn_send(pdev, ndhead) == -1) {
+        printf("conn_recv_dev_reg: failed to send reply\n");
+        return -1;
+    }
+
+    free(ndhead->payload);
     return 0; /* success */
 }
 
