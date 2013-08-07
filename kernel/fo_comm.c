@@ -193,6 +193,90 @@ int fo_execute(
     do_exit(0); /* success */
 }
 
+/* file operation structure:
+ * 0 - size_t - size of args structure
+ * 1 - size_t - size of data/payload
+ * 2 - int    - return value of operation
+ * 3 - args   - struct with fo args
+ * 4 - data   - payload
+ */
+void * fo_serialize(
+    struct fo_req *req,
+    size_t *bufflen)
+{
+    void *data = NULL;
+    size_t size = 0;
+    *bufflen =  sizeof(req->size) +
+                sizeof(req->data_size) +
+                sizeof(req->rvalue) +
+                req->size +
+                req->data_size;
+
+    debug("bufflen = %zu", *bufflen);
+    data = kzalloc(*bufflen, GFP_KERNEL);
+    if (!data) {
+        printk(KERN_ERR "fo_serialize: failed to allocate data\n");
+        return NULL; /* failure */
+    }
+
+    debug("req->size = %zu", req->size);
+    memcpy(data + size, &req->size,      sizeof(req->size));
+    size += sizeof(req->size);
+    debug("req->data_size = %zu", req->data_size);
+    memcpy(data + size, &req->data_size, sizeof(req->data_size));
+    size += sizeof(req->data_size);
+    memcpy(data + size, &req->rvalue,    sizeof(req->rvalue));
+    size += sizeof(req->rvalue);
+    memcpy(data + size, req->args,       req->size);
+    size += req->size;
+    memcpy(data + size, req->data,       req->data_size);
+
+    return data;
+}
+
+struct fo_req * fo_deserialize(
+    void *data)
+{
+    struct fo_req *req = NULL;
+    size_t size = 0;
+
+    req = kzalloc(sizeof(*req), GFP_KERNEL);
+    if (!req) {
+        printk(KERN_ERR "fo_deserialize: failed to allocate req\n");
+        return NULL; /* failure */
+    }
+
+    /* get all the data */
+    memcpy(&req->size,      data + size, sizeof(req->size));
+    size += sizeof(req->size);
+    debug("req->size = %zu", req->size);
+    memcpy(&req->data_size, data + size, sizeof(req->data_size));
+    size += sizeof(req->data_size);
+    debug("req->data_size = %zu", req->data_size);
+    memcpy(&req->rvalue,    data + size, sizeof(req->rvalue));
+    size += sizeof(req->rvalue);
+    req->args = kzalloc(req->size, GFP_KERNEL);
+    if (!req->args) {
+        printk(KERN_ERR "fo_deserialize: failed to allocate args\n");
+        goto free_req;
+    }
+    memcpy(req->args,       data + size, req->size);
+    size += req->size;
+    req->data = kzalloc(req->data_size, GFP_KERNEL);
+    if (!req->data) {
+        printk(KERN_ERR "fo_deserialize: failed to allocate data\n");
+        goto free_req;
+    }
+    memcpy(req->data,       data + size, req->data_size);
+
+    return req;
+free_req:
+    kfree(req->data);
+    kfree(req->args);
+    kfree(req);
+    return NULL;
+}
+
 /* functions for sending and receiving file operations */
 loff_t netdev_fo_llseek_send_req (struct file *filp, loff_t offset, int whence)
 {
@@ -201,12 +285,15 @@ loff_t netdev_fo_llseek_send_req (struct file *filp, loff_t offset, int whence)
 ssize_t netdev_fo_read_send_req (struct file *filp, char __user *data, size_t size, loff_t *offset)
 {
     struct s_fo_read args = {
-        .data = NULL,
+        .data = data,
         .size = size,
         .offset = offset
     };
 
-    if ( fo_send(MSGT_FO_READ, filp->private_data, &args, sizeof(args)) ) {
+    if ( fo_send(MSGT_FO_READ,
+                filp->private_data,
+                &args, sizeof(args),
+                NULL, 0) ) {
         return args.rvalue;
     }
     return -EIO;
@@ -214,12 +301,15 @@ ssize_t netdev_fo_read_send_req (struct file *filp, char __user *data, size_t si
 ssize_t netdev_fo_write_send_req (struct file *filp, const char __user *data, size_t size, loff_t *offset)
 {
     struct s_fo_write args = {
-        .data = NULL,
+        .data = data,
         .size = size,
         .offset = offset
     };
 
-    if ( fo_send(MSGT_FO_WRITE, filp->private_data, &args, sizeof(args))) {
+    if ( fo_send(MSGT_FO_WRITE,
+                filp->private_data,
+                &args, sizeof(args),
+                (void*)data, size)) {
         return args.rvalue;
     }
     return -EIO;
@@ -255,7 +345,10 @@ int netdev_fo_open_send_req (struct inode *inode, struct file *filp)
         .inode = inode
     };
 
-    if ( fo_send(MSGT_FO_OPEN, filp->private_data, &args, sizeof(args)) )
+    if ( fo_send(MSGT_FO_OPEN,
+                filp->private_data,
+                &args, sizeof(args),
+                NULL, 0) )
     {
         return args.rvalue;
     }
@@ -263,12 +356,18 @@ int netdev_fo_open_send_req (struct inode *inode, struct file *filp)
 }
 int netdev_fo_flush_send_req (struct file *filp, fl_owner_t id)
 {
-    fo_send(MSGT_FO_FLUSH, filp->private_data, NULL, 0);
+    fo_send(MSGT_FO_FLUSH,
+            filp->private_data,
+            NULL, 0,
+            NULL, 0);
     return 0;
 }
 int netdev_fo_release_send_req (struct inode *a, struct file *filp)
 {
-    fo_send(MSGT_FO_RELEASE, filp->private_data, NULL, 0);
+    fo_send(MSGT_FO_RELEASE,
+            filp->private_data,
+            NULL, 0,
+            NULL, 0);
     return 0;
 }
 int netdev_fo_fsync_send_req (struct file *filp, loff_t b, loff_t offset, int d)
