@@ -6,7 +6,8 @@
 
 /* this number will be increased every time the core protocol changed */
 #define NETDEV_PROTOCOL_VERSION 1
-#define NETDEV_PROTOCOL_CORRECT 0 /* 0 will always mean correct */
+#define NETDEV_PROTOCOL_SUCCESS 0 /* 0 will always mean correct */
+#define NETDEV_PROTOCOL_FAILURE -1 /* 0 will always mean failure */
 
 /* let the kernel decide the major number */
 #define NETDEV_MAJOR            0
