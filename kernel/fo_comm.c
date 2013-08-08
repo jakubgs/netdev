@@ -42,6 +42,7 @@ int fo_send(
     }
 
     req->msgtype = msgtype;
+    req->rvalue = 0;
     req->args = args;
     req->size = size;
     req->data = data;
@@ -59,9 +60,8 @@ int fo_send(
         rvalue = -ENODATA;
         goto out;
     }
+    debug("bufflen = %zu", bufflen);
 
-    fo_deserialize(buffer); /* TEST */
-    
     if (!(req->seq = ndmgm_incseq(nddata))) {
         printk(KERN_ERR "fo_send: failed to increment curseq\n");
         rvalue = -EBUSY;
@@ -82,9 +82,9 @@ int fo_send(
     }
 
     /* wait for completion, it will be signaled once a reply is received */
-    debug("starting wait for file operation, seq = %ld", req->seq);
+    debug("STARTING WAIT, seq = %ld", req->seq);
     wait_for_completion(&req->comp);
-    debug("returned from wait for file operation, seq = %ld", req->seq);
+    debug("WAIT COMPLETE, seq = %ld", req->seq);
 
     rvalue = req->rvalue;
     debug("rvalue = %d", rvalue);
@@ -115,11 +115,8 @@ int fo_recv(
     ndmgm_get(nddata);
 
     if (nddata->dummy) {
-        /* find fo in queue and complete it */
         rvalue = fo_complete(nddata, nlh, skb);
     } else {
-        /* crate a new thread since we want to return control to the
-         * server process so it doesn't wait needlesly */
         if ((data = kzalloc(sizeof(*data), GFP_KERNEL)) == NULL) {
             printk(KERN_ERR "fo_recv: failed to allocate data\n");
             rvalue = 1; /* failure */
@@ -128,6 +125,8 @@ int fo_recv(
         data->nlh = nlh;
         data->skb = skb;
 
+        /* crate a new thread since we want to return control to the
+         * server process so it doesn't wait needlesly */
         task = kthread_run(&fo_execute, (void*)data, "fo_execute");
         if (IS_ERR(task)) {
             printk("fo_recv: failed to create thread for file operation, error = %ld\n", PTR_ERR(task));
@@ -153,7 +152,6 @@ int fo_complete(
         return 1; /* failure */
     }
 
-    debug("nlh->nlmsg_seq = %d", nlh->nlmsg_seq);
     debug("nlh->nlmsg_len = %d", nlh->nlmsg_len);
     debug("payload size = %d", nlmsg_len(nlh));
 
@@ -184,6 +182,7 @@ int fo_execute(
 
     ndmgm_get(fodata->nddata);
 
+    /* TODO copy the skb since netlink_recv will free it */
     /* TODO execute appropriate file operation and then send back
      * the result to the server in userspace */
 
@@ -212,17 +211,14 @@ void * fo_serialize(
                 req->size +
                 req->data_size;
 
-    debug("bufflen = %zu", *bufflen);
     data = kzalloc(*bufflen, GFP_KERNEL);
     if (!data) {
         printk(KERN_ERR "fo_serialize: failed to allocate data\n");
         return NULL; /* failure */
     }
 
-    debug("req->size = %zu", req->size);
     memcpy(data + size, &req->size,      sizeof(req->size));
     size += sizeof(req->size);
-    debug("req->data_size = %zu", req->data_size);
     memcpy(data + size, &req->data_size, sizeof(req->data_size));
     size += sizeof(req->data_size);
     memcpy(data + size, &req->rvalue,    sizeof(req->rvalue));
@@ -249,10 +245,8 @@ struct fo_req * fo_deserialize(
     /* get all the data */
     memcpy(&req->size,      data + size, sizeof(req->size));
     size += sizeof(req->size);
-    debug("req->size = %zu", req->size);
     memcpy(&req->data_size, data + size, sizeof(req->data_size));
     size += sizeof(req->data_size);
-    debug("req->data_size = %zu", req->data_size);
     memcpy(&req->rvalue,    data + size, sizeof(req->rvalue));
     size += sizeof(req->rvalue);
     req->args = kzalloc(req->size, GFP_KERNEL);
@@ -293,7 +287,8 @@ ssize_t netdev_fo_read_send_req (struct file *filp, char __user *data, size_t si
     if ( fo_send(MSGT_FO_READ,
                 filp->private_data,
                 &args, sizeof(args),
-                NULL, 0) ) {
+                data, 0) )
+    {
         return args.rvalue;
     }
     return -EIO;
