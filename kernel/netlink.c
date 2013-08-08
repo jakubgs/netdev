@@ -24,12 +24,8 @@ void netlink_recv(struct sk_buff *skb)
     seq     = nlh->nlmsg_seq;
     msgtype = nlh->nlmsg_type;
 
-    debug("msg type: %d, from pid: %d", msgtype, pid);
-    if (nlh->nlmsg_len > 16) {
-        debug("msg size: %d, message: %s",
-                nlh->nlmsg_len,
-                (char*)nlmsg_data(nlh));
-    }
+    debug("msg type: %d, from pid: %d, msg size: %d",
+            msgtype, pid, nlh->nlmsg_len);
     if ( pid == 0 ) {
         printk(KERN_ERR "netlink_recv: received message from kernel, pid: %d\n", pid);
         return;
@@ -90,23 +86,21 @@ int netlink_send(
     int seq,
     short msgtype,
     int flags,
-    char *buff,
+    void *buff,
     size_t bufflen)
 {
-    /* TODO should receive not only msgtype but also a buffer with
-     * properly formatted arguments from netdev_fo_OP_send_req */
     struct nlmsghdr *nlh;
     struct sk_buff *skb_out;
     int rvalue;
 
-    debug("msg type: %d, from pid: %d", msgtype, nddata->nlpid);
-    debug("msg size: %zu, message: %s", bufflen, buff);
+    debug("msg type: %d, to pid: %d, msg size: %zu",
+            msgtype, nddata->nlpid, bufflen);
 
     /* allocate space for message header and it's payload */
     skb_out = nlmsg_new(bufflen, GFP_KERNEL);
 
     if(!skb_out) {
-        printk(KERN_ERR "netlink: failed to allocate new sk_buff!\n");
+        printk(KERN_ERR "netlink_send: failed to allocate new sk_buff!\n");
         goto free_skb;
     }
 
@@ -118,6 +112,11 @@ int netlink_send(
                     msgtype,
                     bufflen, /* adds nlh size (16bytes) for full size */
                     flags | NLM_F_ACK); /* for delivery confirmation */
+
+    if (!nlh) {
+        printk(KERN_ERR "netlink_send: failed to create nlh\n");
+        goto free_skb;
+    }
 
     debug("nlh->nlmsg_len = %d", nlh->nlmsg_len);
 
@@ -139,7 +138,6 @@ int netlink_send(
     }
 
     return 1; /* success */
-
 free_skb:
     nlmsg_free(skb_out);
     return 0;
