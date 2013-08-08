@@ -63,11 +63,9 @@ int netlink_send(
         return -1; /* failure */
     }
 
-    debug("sending message to kernel");
-    debug("buff = %zu, bsize = %d",
-            *(size_t*)NLMSG_DATA(nlh),
-            nlh->nlmsg_len);
-    debug("nlh->nlmsg_pid = %d", pdev->pid);
+    debug("msg size = %d, message = %zu",
+            nlh->nlmsg_len,
+            *(size_t*)NLMSG_DATA(nlh)),
     
     /* netlink header is our payload */
     iov.iov_base = (void *)nlh;
@@ -95,7 +93,6 @@ int netlink_send_msg(
     struct nlmsghdr *nlh = NULL;
 
     debug("sending message to kernel");
-    debug("buff = %s, bsize = %zu", (char*)buff, bsize);
     debug("nlh->nlmsg_pid = %d", pdev->pid);
     
     nlh = malloc(NLMSG_SPACE(bsize));
@@ -109,7 +106,6 @@ int netlink_send_msg(
 
     /* TODO check if we can't just assign the pointer */
     if (buff) {
-        printf("netlink_send_msg: memcpy of buff\n");
         memcpy(NLMSG_DATA(nlh), buff, bsize);
     }
 
@@ -126,7 +122,6 @@ int netlink_send_msg(
 
     /* check confirmation */
     if ( nlh->nlmsg_type == NLMSG_ERROR ) {
-        debug("nlmsgerr size = %d", nlh->nlmsg_len);
         msgerr = ((struct nlmsgerr*)NLMSG_DATA(nlh));
         /* TODO free nlh */
         if (msgerr->error != 0) {
@@ -160,6 +155,7 @@ struct nlmsghdr * netlink_recv(
     msgh.msg_iov = &iov; /* this normally is an array of */
     msgh.msg_iovlen = 1;
 
+    debug("reading header bytes = %zu", bufflen);
     /* the minimum is the size of the nlmsghdr alone */
     if (recvall(pdev->nl_fd, &msgh, sizeof(*nlh)) == -1) {
         printf("netlink_recv: failed to read message\n");
