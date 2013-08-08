@@ -33,7 +33,6 @@ int conn_send(struct proxy_dev *pdev, struct netdev_header *ndhead) {
 
     free(iov.iov_base);
 
-    debug("success");
     return 0; /* success */
 }
 
@@ -66,7 +65,6 @@ struct netdev_header * conn_recv(struct proxy_dev *pdev) {
         return NULL;
     }
     
-    debug("success");
     return ndhead;
 }
 
@@ -195,7 +193,8 @@ int conn_send_dev_reg(struct proxy_dev *pdev) {
     ndhead->size    = strlen(pdev->remote_dev_name)+1; /* plus null */
     ndhead->payload = pdev->remote_dev_name; /* TODO */
 
-    debug("sending device name: %s", pdev->remote_dev_name);
+    printf("conn_send_dev_reg: sending device name: %s\n",
+            pdev->remote_dev_name);
     if (conn_send(pdev, ndhead) == -1) {
         printf("conn_send_dev_reg: failed to send device registration\n");
         free(ndhead);
@@ -222,6 +221,7 @@ int conn_send_dev_reg(struct proxy_dev *pdev) {
         printf("proxy_client: failed to register device on the server!\n");
         return -1;
     }
+    printf("conn_send_dev_reg: device registered\n");
     return 0; /* success */
 }
 
@@ -268,7 +268,7 @@ int conn_recv_dev_reg(struct proxy_dev *pdev) {
 /* size is the minimum that should be read */
 int recvall(int conn_fd, struct msghdr *msgh, int size) {
     int rvalue = 0, bytes = 0;
-    debug("receiving bytes = %d", size);
+    //debug("receiving bytes = %d", size);
 
     do {
         rvalue = recvmsg(conn_fd, msgh, 0);
@@ -277,27 +277,29 @@ int recvall(int conn_fd, struct msghdr *msgh, int size) {
             perror("recvall(recvmsg)");
             return -1; /* falure */
         } else if (rvalue == 0 ) {
-            debug("nothing sent");
             return -1;
         }
         bytes += rvalue;
     } while (bytes < size);
 
-    return 0; /* success */
+    if (msgh->msg_flags == MSG_TRUNC) {
+        printf("recvall: message truncated!\n");
+    }
+
+    return bytes; /* success */
 }
 
 int sendall(int conn_fd, struct msghdr *msgh, int size) {
     int rvalue = 0, bytes = 0;
-    debug("sending bytes = %d", size);
+    //debug("sending bytes = %d", size);
 
     do {
-        rvalue = sendmsg(conn_fd, msgh, 0);
-        debug("rvalue = %d", rvalue);
+        rvalue = sendmsg(conn_fd, msgh, MSG_DONTWAIT);
+        //debug("rvalue = %d", rvalue);
         if (rvalue == -1) {
             perror("sendmsg(sendmsg)");
             return -1; /* falure */
         } else if (rvalue == 0 ) {
-            debug("nothing sent");
             return -1;
         }
         bytes += rvalue;
