@@ -144,25 +144,40 @@ struct nlmsghdr * netlink_recv(
     struct nlmsghdr *nlh = NULL;
     struct msghdr msgh = {0};
     struct iovec iov = {0};
-
-    nlh = malloc(NLMSG_SPACE(1024));
-    memset(nlh, 0, NLMSG_SPACE(1024));
-    nlh->nlmsg_len = NLMSG_SPACE(1024); /* struct size + payload */
+    size_t bufflen = MAX_PAYLOAD; /* TODO this might be too small */
+    char buffer[bufflen];
 
     /* netlink header is our payload */
-    iov.iov_base = (void *)nlh;
-    iov.iov_len = sizeof(*nlh);
+    iov.iov_base = buffer;
+    iov.iov_len = bufflen;
     msgh.msg_iov = &iov; /* this normally is an array of */
     msgh.msg_iovlen = 1;
 
     debug("reading header bytes = %zu", bufflen);
     /* the minimum is the size of the nlmsghdr alone */
-    if (recvall(pdev->nl_fd, &msgh, sizeof(*nlh)) == -1) {
+    bufflen = recvall(pdev->nl_fd, &msgh, sizeof(*nlh));
+    if (bufflen == -1) {
         printf("netlink_recv: failed to read message\n");
+        return  NULL;
+    }
+
+    nlh = malloc(bufflen);
+    if (!nlh) {
+        perror("netlink_recv(malloc)");
         goto err;
+    }
+    memcpy(nlh, buffer, bufflen);
+
+    if (NLMSG_OK(nlh, bufflen)) {
+        printf("netlink_recv: message not truncated\n");
+    } else {
+        printf("netlink_recv: message truncated!!\n");
     }
 
     debug("msgtype = %d, size = %d", nlh->nlmsg_type, nlh->nlmsg_len);
+    debug("msg size = %d, message = %zu",
+            nlh->nlmsg_len,
+            *(size_t*)NLMSG_DATA(nlh));
 
     return nlh;
 err:
