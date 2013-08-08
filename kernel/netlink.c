@@ -122,7 +122,6 @@ int netlink_send(
 
     NETLINK_CB(skb_out).dst_group = 0; /* not in mcast group */
 
-    if (!buff) { /* possible to send message without payload */
         /* copy data to head of message payload */
         memcpy(nlmsg_data(nlh) ,buff ,bufflen);
     }
