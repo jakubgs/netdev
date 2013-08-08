@@ -122,7 +122,7 @@ int netlink_send(
 
     NETLINK_CB(skb_out).dst_group = 0; /* not in mcast group */
 
-        /* copy data to head of message payload */
+    if (buff) { /* possible to send message without payload */
         memcpy(nlmsg_data(nlh) ,buff ,bufflen);
     }
 
@@ -131,8 +131,8 @@ int netlink_send(
 
     /* TODO get confirmation of delivery */
 
-    if( rvalue > 0 ) {
-        printk(KERN_INFO "Error while sending bak to user\n");
+    if(rvalue > 0) {
+        printk(KERN_INFO "netlink_send: error while sending back to user\n");
         return 0; /* failure */
     }
 
