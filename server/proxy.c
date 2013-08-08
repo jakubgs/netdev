@@ -194,12 +194,14 @@ int proxy_loop(struct proxy_dev *pdev)
         }
 
         if (FD_ISSET(pdev->nl_fd, &rset)) {
+            printf("proxy_loop: netlink socket data!\n");
             if (proxy_handle_netlink(pdev) == -1) {
                 break;
             }
         }
 
         if (FD_ISSET(pdev->rm_fd, &rset)) {
+            printf("proxy_loop: remote socket data!\n");
             if (proxy_handle_remote(pdev) == -1) {
                 break;
             }   
@@ -223,6 +225,7 @@ int proxy_handle_remote(struct proxy_dev *pdev)
 
     rvalue = getsockopt(pdev->rm_fd, SOL_SOCKET, SO_ERROR, &error, &len);
     if (rvalue) {
+        printf("proxy_handle_remote: connection lost\n");
         return -1;
     }
 
@@ -248,6 +251,8 @@ int proxy_handle_netlink(struct proxy_dev *pdev)
 
     if (nlh->nlmsg_type > MSGT_FO_START && 
         nlh->nlmsg_type < MSGT_FO_END) {
+        printf("proxy_handle_netlink: FILE OPERATION: %d\n",
+                nlh->nlmsg_type);
         /* TODO send to server */
         netlink_send(pdev, nlh);
     } else {
