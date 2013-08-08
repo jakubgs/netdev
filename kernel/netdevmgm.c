@@ -121,7 +121,6 @@ struct fo_req * ndmgm_foreq_find(
 
     if (down_write_trylock(&nddata->sem)) {
         while (!kfifo_is_empty(&nddata->fo_queue)) {
-            debug("queue is not empty");
             size = kfifo_out(&nddata->fo_queue, &tmp, sizeof(tmp));
             if (size < sizeof(tmp) || IS_ERR(tmp)) {
                 printk(KERN_ERR "ndmgm_foreq_find: failed to get queue element\n");
