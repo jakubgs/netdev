@@ -169,7 +169,6 @@ int fo_complete(
     complete(&req->comp);
     
     kfree(recv_req);
-    kfree_skb(skb);
     return 0; /* success */
 }
 
@@ -188,7 +187,6 @@ int fo_execute(
 
     ndmgm_put(fodata->nddata);
 
-    kfree_skb(fodata->skb);
     do_exit(0); /* success */
 }
 
