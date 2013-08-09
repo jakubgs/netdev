@@ -87,13 +87,13 @@ int netlink_send_msg(
     int msgtype,
     int flags)
 {
-    struct nlmsgerr *msgerr = NULL;
     struct nlmsghdr *nlh = NULL;
 
-    debug("sending message to kernel");
-    debug("nlh->nlmsg_pid = %d", pdev->pid);
-    
     nlh = malloc(NLMSG_SPACE(bsize));
+    if (!nlh) {
+        printf("netlink_send_msg: failed to allocate nlh\n");
+        return -1; /* failure */
+    }
     memset(nlh, 0, NLMSG_SPACE(bsize));
 
     nlh->nlmsg_len = NLMSG_SPACE(bsize); /* struct size + payload */
@@ -107,6 +107,22 @@ int netlink_send_msg(
         memcpy(NLMSG_DATA(nlh), buff, bsize);
     }
 
+    if (netlink_send_nlh(pdev, nlh) == -1) {
+        printf("netlink_send_msg: failed to send message\n");
+        return -1; /* failure */
+    }
+
+    return 0; /* success */
+}
+
+int netlink_send_nlh(
+    struct proxy_dev *pdev,
+    struct nlmsghdr *nlh)
+{
+    struct nlmsgerr *msgerr = NULL;
+    debug("nlh->nlmsg_pid = %d", pdev->pid);
+
+    debug("sending message to kernel");
     /* send everything */
     if (netlink_send(pdev, nlh) == -1) {
         printf("netlink_send_nlh: failed to send message\n");
@@ -164,12 +180,6 @@ struct nlmsghdr * netlink_recv(
         goto err;
     }
     memcpy(nlh, buffer, bufflen);
-
-    if (NLMSG_OK(nlh, bufflen)) {
-        printf("netlink_recv: message not truncated\n");
-    } else {
-        printf("netlink_recv: message truncated!!\n");
-    }
 
     debug("msgtype = %d, size = %d", nlh->nlmsg_type, nlh->nlmsg_len);
 
