@@ -10,9 +10,9 @@
 int conn_send(struct proxy_dev *pdev, struct netdev_header *ndhead) {
     struct msghdr msgh = {0};
     struct iovec iov = {0};
-    int size = sizeof(*ndhead) + ndhead->size;
+    size_t size = sizeof(*ndhead) + ndhead->size;
 
-    debug("sending bytes = %zu", ndhead->size);
+    debug("sending bytes = %zu", size);
 
     msgh.msg_iov = &iov;
     msgh.msg_iovlen = 1;
@@ -268,11 +268,9 @@ int conn_recv_dev_reg(struct proxy_dev *pdev) {
 /* size is the minimum that should be read */
 int recvall(int conn_fd, struct msghdr *msgh, int size) {
     int rvalue = 0, bytes = 0;
-    //debug("receiving bytes = %d", size);
 
     do {
         rvalue = recvmsg(conn_fd, msgh, 0);
-        debug("rvalue = %d", rvalue);
         if (rvalue == -1) {
             perror("recvall(recvmsg)");
             return -1; /* falure */
@@ -291,11 +289,9 @@ int recvall(int conn_fd, struct msghdr *msgh, int size) {
 
 int sendall(int conn_fd, struct msghdr *msgh, int size) {
     int rvalue = 0, bytes = 0;
-    //debug("sending bytes = %d", size);
 
     do {
         rvalue = sendmsg(conn_fd, msgh, MSG_DONTWAIT);
-        //debug("rvalue = %d", rvalue);
         if (rvalue == -1) {
             perror("sendmsg(sendmsg)");
             return -1; /* falure */
