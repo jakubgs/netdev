@@ -63,10 +63,8 @@ int netlink_send(
         return -1; /* failure */
     }
 
-    debug("msg size = %d, message = %zu",
-            nlh->nlmsg_len,
-            *(size_t*)NLMSG_DATA(nlh)),
-    
+    debug("msgtype = %d, size = %d", nlh->nlmsg_type, nlh->nlmsg_len);
+
     /* netlink header is our payload */
     iov.iov_base = (void *)nlh;
     iov.iov_len = nlh->nlmsg_len;
@@ -111,19 +109,18 @@ int netlink_send_msg(
 
     /* send everything */
     if (netlink_send(pdev, nlh) == -1) {
-        printf("netlink_send_msg: faile to send message\n");
+        printf("netlink_send_nlh: failed to send message\n");
         return -1; /* failure */
     }
     /* get confirmation of delivery */
     if ((nlh = netlink_recv(pdev)) == NULL) {
-        printf("netlink_send_msg: failed to receive confirmation\n");
+        printf("netlink_send_nlh: failed to receive confirmation\n");
         return -1; /* failure */
-    } 
+    }
 
     /* check confirmation */
     if ( nlh->nlmsg_type == NLMSG_ERROR ) {
         msgerr = ((struct nlmsgerr*)NLMSG_DATA(nlh));
-        /* TODO free nlh */
         if (msgerr->error != 0) {
             debug("delivery failure, msgerr->error = %d", msgerr->error);
             return -1; /* failure */
@@ -175,9 +172,6 @@ struct nlmsghdr * netlink_recv(
     }
 
     debug("msgtype = %d, size = %d", nlh->nlmsg_type, nlh->nlmsg_len);
-    debug("msg size = %d, message = %zu",
-            nlh->nlmsg_len,
-            *(size_t*)NLMSG_DATA(nlh));
 
     return nlh;
 err:
