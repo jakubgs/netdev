@@ -296,7 +296,7 @@ int ndmgm_destroy(
 {
     int rvalue;
     debug("destroying device %s", nddata->devname);
-    if (nddata) {
+    if (!nddata) {
         printk(KERN_ERR "ndmgm_destroy: nddata is NULL\n");
         return 1; /* failure */
     }
