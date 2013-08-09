@@ -134,6 +134,7 @@ struct fo_req * ndmgm_foreq_find(
                 break;
             }
             /* put the wrong element back into the queue */
+            debug("wrong element, putting it back at the end");
             kfifo_in(&nddata->fo_queue, &tmp, sizeof(tmp));
             if (req == tmp) {
                 tmp = NULL;
@@ -160,8 +161,11 @@ int ndmgm_foreq_add(
 /* this function safely increases the current sequence number */
 int ndmgm_incseq(struct netdev_data *nddata)
 {
+    int rvalue;
     atomic_inc(&nddata->curseq);
-    return atomic_read(&nddata->users);
+    rvalue = atomic_read(&nddata->users);
+    debug("curseq = %d", rvalue);
+    return rvalue;
 }
 
 /*  TODO all this shit will HAVE to use semafors if it has to work */
@@ -367,7 +371,6 @@ int ndmgm_end(void)
     debug("cleaning devices");
 
     if (down_write_trylock(&netdev_htable_sem)) {
-        debug("locked");
         /* needs to be _safe so we can delete elements inside the loop */
         hash_for_each_safe(netdev_htable, i, tmp, nddata, hnode) {
             debug("deleting dev pid = %d",
@@ -379,9 +382,14 @@ int ndmgm_end(void)
                 printk(KERN_ERR "netdev_end: failed to destroy nddata\n");
             }
         }
+        debug("exited loop");
+        if (!hash_empty(netdev_htable)) {
+            debug("htable not empty yet!");
+        }
         up_write(&netdev_htable_sem);
         return 0; /* success */
     }
+    debug("failed to unlock hashtable");
     return 1; /* failure */
 }
 
