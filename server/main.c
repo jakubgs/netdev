@@ -141,15 +141,15 @@ int main(int argc, char *argv[]) {
     int pid, dev_count, i, port = NETDEV_SERVER_PORT;
     struct proxy_dev **pdevs = NULL;
 
+    /* to run waitpid for all forked proxies */
+    signal(SIGCHLD, parent_sig_chld);
+
     if (argc == 2) {
         port = atoi(argv[1]);
 
         if (!(pdevs = read_config(NULL, &dev_count))) {
             return 1;
         }
-
-       /* to run waitpid for all forked proxies */
-        signal(SIGCHLD, parent_sig_chld);
 
         for ( i = 0 ; i < dev_count ; i++ ) {
             if ( ( pid = fork() ) == 0 ) {
