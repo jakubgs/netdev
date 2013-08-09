@@ -188,7 +188,7 @@ int proxy_loop(struct proxy_dev *pdev)
             printf("proxy_loop: unix socket data!\n");
             /* message from control unix socket */
             if (proxy_control(pdev) == -1) {
-                break;
+                return -1;
             }
             break;
         }
@@ -196,15 +196,15 @@ int proxy_loop(struct proxy_dev *pdev)
         if (FD_ISSET(pdev->nl_fd, &rset)) {
             printf("proxy_loop: netlink socket data!\n");
             if (proxy_handle_netlink(pdev) == -1) {
-                break;
+                return -1;
             }
         }
 
         if (FD_ISSET(pdev->rm_fd, &rset)) {
             printf("proxy_loop: remote socket data!\n");
             if (proxy_handle_remote(pdev) == -1) {
-                break;
-            }   
+                return -1;
+            }
         }
     }
 
@@ -230,7 +230,12 @@ int proxy_handle_remote(struct proxy_dev *pdev)
     }
 
     ndhead = conn_recv(pdev);
-    
+    if (!ndhead) {
+        printf("proxy_handle_remote: failed to receive message\n");
+        return -1;
+    }
+
+
     debug("ndhead->msgtype = %d", ndhead->msgtype);
 
     return 0;
@@ -241,6 +246,7 @@ int proxy_handle_remote(struct proxy_dev *pdev)
 int proxy_handle_netlink(struct proxy_dev *pdev)
 {
     struct nlmsghdr *nlh = NULL;
+    struct netdev_header *ndhead = NULL;
 
     nlh = netlink_recv(pdev);
 
@@ -249,7 +255,7 @@ int proxy_handle_netlink(struct proxy_dev *pdev)
         return -1; /* failure */
     }
 
-    if (nlh->nlmsg_type > MSGT_FO_START && 
+    if (nlh->nlmsg_type > MSGT_FO_START &&
         nlh->nlmsg_type < MSGT_FO_END) {
         printf("proxy_handle_netlink: FILE OPERATION: %d\n",
                 nlh->nlmsg_type);
