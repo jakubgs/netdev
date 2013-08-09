@@ -237,6 +237,23 @@ int proxy_handle_remote(struct proxy_dev *pdev)
 
 
     debug("ndhead->msgtype = %d", ndhead->msgtype);
+    if (ndhead->msgtype > MSGT_FO_START &&
+        ndhead->msgtype < MSGT_FO_END) {
+        printf("proxy_handle_netlink: FILE OPERATION: %d\n",
+                ndhead->msgtype);
+
+        if (pdev->client) {
+            printf("proxy_handle_remote: sending to kernel\n");
+            netlink_send_nlh(pdev, (struct nlmsghdr *)ndhead->payload);
+        } else {
+            printf("proxy_handle_remote: sending to client\n");
+            conn_send(pdev, ndhead);
+        }
+    } else {
+        printf("proxy_handle_netlink: unknown message type: %d\n",
+                ndhead->msgtype);
+        return -1; /* failure */
+    }
 
     return 0;
 }
@@ -259,8 +276,17 @@ int proxy_handle_netlink(struct proxy_dev *pdev)
         nlh->nlmsg_type < MSGT_FO_END) {
         printf("proxy_handle_netlink: FILE OPERATION: %d\n",
                 nlh->nlmsg_type);
-        /* TODO send to server */
-        netlink_send(pdev, nlh);
+
+        ndhead = malloc(sizeof(*ndhead));
+        if (!ndhead) {
+            perror("proxy_handle_netlink(malloc)");
+            return -1;
+        }
+        ndhead->msgtype = nlh->nlmsg_type;
+        ndhead->size = nlh->nlmsg_len;
+        ndhead->payload = nlh;
+
+        conn_send(pdev, ndhead);
     } else {
         printf("proxy_handle_netlink: unknown message type: %d\n",
                 nlh->nlmsg_type);
