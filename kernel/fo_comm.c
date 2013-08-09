@@ -162,8 +162,12 @@ int fo_complete(
     }
 
     /* give arguments and the payload to waiting file operation */
-    memcpy(req->args, recv_req->args, sizeof(req->args));
-    memcpy(req->data, recv_req->data, recv_req->data_size);
+    if (!recv_req->args) {
+        memcpy(req->args, recv_req->args, sizeof(req->size));
+    }
+    if (!recv_req->data) {
+        memcpy(req->data, recv_req->data, recv_req->data_size);
+    }
 
     debug("completing file operation, seq = %ld", req->seq);
     complete(&req->comp);
