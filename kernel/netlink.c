@@ -8,15 +8,11 @@
 #include "dbg.h"
 
 struct sock *nl_sk = NULL;
-/* TODO this will have to be part of a struct that will contain information
- * about the device this driver will pretend to be received from the server
- * process */
-int pid = 0;
 
 void netlink_recv(struct sk_buff *skb)
 {
     struct nlmsghdr *nlh;
-    int msgtype, seq, err = 0;
+    int pid, msgtype, seq, err = 0;
 
     nlh = nlmsg_hdr(skb);
 
