@@ -86,23 +86,23 @@ int netlink_send(
     size_t bufflen)
 {
     struct nlmsghdr *nlh;
-    struct sk_buff *skb_out;
+    struct sk_buff *skb;
     int rvalue;
 
     debug("msg type: %d, to pid: %d, msg size: %zu",
             msgtype, nddata->nlpid, bufflen);
 
     /* allocate space for message header and it's payload */
-    skb_out = nlmsg_new(bufflen, GFP_KERNEL);
+    skb = nlmsg_new(bufflen, GFP_KERNEL);
 
-    if(!skb_out) {
+    if(!skb) {
         printk(KERN_ERR "netlink_send: failed to allocate new sk_buff!\n");
         goto free_skb;
     }
 
     /* set pid, seq, message type, payload size and flags */
     nlh = nlmsg_put(
-                    skb_out,
+                    skb,
                     nddata->nlpid,
                     seq,
                     msgtype,
@@ -116,14 +116,14 @@ int netlink_send(
 
     debug("nlh->nlmsg_len = %d", nlh->nlmsg_len);
 
-    NETLINK_CB(skb_out).dst_group = 0; /* not in mcast group */
+    NETLINK_CB(skb).dst_group = 0; /* not in mcast group */
 
     if (buff) { /* possible to send message without payload */
         memcpy(nlmsg_data(nlh) ,buff ,bufflen);
     }
 
-    /* send messsage,nlmsg_unicast will take care of freeing skb_out */
-    rvalue = nlmsg_unicast(nl_sk, skb_out, nddata->nlpid);
+    /* send messsage,nlmsg_unicast will take care of freeing skb */
+    rvalue = nlmsg_unicast(nl_sk, skb, nddata->nlpid);
 
     /* TODO get confirmation of delivery */
 
@@ -141,16 +141,16 @@ free_skb:
 int netlink_echo(int pid, int seq, char *msg)
 {
     struct nlmsghdr *nlh;
-    struct sk_buff *skb_out;
+    struct sk_buff *skb;
     int msg_size = strlen(msg);
     int rvalue;
 
     printk(KERN_INFO "netlink: received msg payload: %s\n", msg);
 
     /* allocate memory for sk_buff, no flags */
-    skb_out = nlmsg_new(msg_size, GFP_KERNEL);
+    skb = nlmsg_new(msg_size, GFP_KERNEL);
 
-    if(!skb_out) {
+    if(!skb) {
         printk(KERN_ERR "netlink: failed to allocate new sk_buff!\n");
         rvalue = -1;
         goto skbfree;
@@ -158,28 +158,28 @@ int netlink_echo(int pid, int seq, char *msg)
 
     /* set pid, seq, message type, payload size and flags */
     nlh = nlmsg_put(
-                    skb_out,
+                    skb,
                     pid,
                     seq,
                     MSGT_CONTROL_ECHO,
                     msg_size,
                     NLM_F_ACK);
 
-    NETLINK_CB(skb_out).dst_group = 0; /* not in mcast group */
+    NETLINK_CB(skb).dst_group = 0; /* not in mcast group */
 
     strncpy(nlmsg_data(nlh) ,msg ,msg_size);
 
-    /* send messsage, nlmsg_unicast will take care of freeing skb_out */
-    rvalue = nlmsg_unicast(nl_sk,skb_out,pid);
+    /* send messsage, nlmsg_unicast will take care of freeing skb */
+    rvalue = nlmsg_unicast(nl_sk,skb,pid);
 
-    if(rvalue>0) {
+    if(rvalue<=0) {
         printk(KERN_ERR "netlink: error while replying to process\n");
         return -1;
     }
 
     return 0; /* success */
 skbfree:
-    nlmsg_free(skb_out);
+    nlmsg_free(skb);
     return -1;
 }
 
@@ -202,7 +202,7 @@ int netlink_init(void)
 
     if(!nl_sk) {
         printk(KERN_ALERT "Error creating socket.\n");
-        return -10;
+        return -1;
     }
 
     printk("netdev: Netlink setup complete\n");
