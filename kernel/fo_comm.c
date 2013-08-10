@@ -179,18 +179,75 @@ int fo_complete(
 int fo_execute(
     void *data)
 {
-    struct fo_data *fodata;
-    fodata = (struct fo_data*)data;
+    int (*fofun)(struct fo_req*) = NULL;
+    struct sk_buff *skb = data;
+    struct netdev_data *nddata = NULL;
+    struct nlmsghdr *nlh = NULL;
+    struct fo_req *req = NULL;
+    void *buff = NULL;
+    size_t bufflen = 0;
+    int fonum = 0;
+    int rvalue = 0; /* success */
 
-    ndmgm_get(fodata->nddata);
+    nlh = nlmsg_hdr(skb);
 
-    /* TODO copy the skb since netlink_recv will free it */
-    /* TODO execute appropriate file operation and then send back
-     * the result to the server in userspace */
+    nddata = ndmgm_find(nlh->nlmsg_pid);
+    if (IS_ERR(nddata)) {
+        printk(KERN_ERR "fo_recv: failed to find device for pid = %d\n",
+                nlh->nlmsg_pid);
+        return -1; /* failure */
+    }
+    ndmgm_get(nddata);
 
-    ndmgm_put(fodata->nddata);
+    debug("nlh->nlmsg_len = %d", nlh->nlmsg_len);
 
-    do_exit(0); /* success */
+    req = fo_deserialize(NLMSG_DATA(nlh));
+    if (!req) {
+        printk(KERN_ERR "fo_execute: failed to deserialize req\n");
+        rvalue = -1; /* failure */
+        goto err;
+    }
+
+    printk(KERN_INFO "fo_execute: executing file operation = %d\n",
+                    nlh->nlmsg_type);
+    
+    /* get number of file operation for array */
+    fonum = nlh->nlmsg_type - (MSGT_FO_START+1);
+    /* get the correct file operation function from the array */
+    fofun = netdev_recv_fops[fonum];
+    if (!fofun) {
+        printk(KERN_ERR "fo_execute: file operation not implemented\n");
+        rvalue = -1; /* failure */
+        goto err;
+    }
+
+    /* execute the file operation */
+    req->rvalue = fofun(req);
+    if (req->rvalue == -1) {
+        printk(KERN_ERR "fo_execute: file operation failed\n");
+        rvalue = -1;
+        goto err;
+    }
+
+    /* send back the result to the server in userspace */
+    buff = fo_serialize(req, &bufflen);
+    if (!buff) {
+        printk(KERN_ERR "fo_execute: failed to serialize req\n");
+        rvalue = -1; /* failure */
+        goto err;
+    }
+
+    /* make sure sk_buff has enough space for our payload */
+    skb_copy_expand(skb, 0, bufflen, GFP_KERNEL);
+    memcpy(nlmsg_data(nlh) ,buff ,bufflen);
+
+err:
+    /* rvalue is -1 so sending it back untouched will mean failure */
+    netlink_send_skb(nddata, skb);
+    ndmgm_put(nddata);
+    kfree(req);
+    kfree(buff);
+    do_exit(rvalue);
 }
 
 /* file operation structure:
