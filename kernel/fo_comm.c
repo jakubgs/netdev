@@ -2,10 +2,9 @@
 #include <linux/kthread.h>
 #include <net/netlink.h>
 
-#include "fo.h"
 #include "protocol.h"
 #include "netlink.h"
-#include "fo_struct.h"
+#include "fo_recv.h"
 #include "dbg.h"
 
 /* used for sending file operations converted by send_req functions to
@@ -21,7 +20,7 @@ int fo_send(
     void *data,
     size_t data_size)
 {
-    int rvalue = 1;
+    int rvalue = 0;
     size_t bufflen = 0;
     void *buffer = NULL;
     struct fo_req *req = NULL;
@@ -41,6 +40,7 @@ int fo_send(
         goto out;
     }
 
+    req->rvalue = -1; /* assume failure, server has to change it to 0 */
     req->msgtype = msgtype;
     req->rvalue = 0;
     req->args = args;
@@ -75,7 +75,7 @@ int fo_send(
                             buffer,
                             bufflen);
 
-    if (!rvalue) {
+    if (rvalue < 0) {
         printk(KERN_ERR "fo_send: failed to send file operation\n");
         rvalue = -ECANCELED;
         goto out;
@@ -110,7 +110,7 @@ int fo_recv(
     if (IS_ERR(nddata)) {
         printk(KERN_ERR "fo_recv: failed to find device for pid = %d\n",
                 nlh->nlmsg_pid);
-        return 1; /* failure */
+        return -1; /* failure */
     }
     ndmgm_get(nddata);
 
@@ -119,7 +119,8 @@ int fo_recv(
     } else {
         if ((data = kzalloc(sizeof(*data), GFP_KERNEL)) == NULL) {
             printk(KERN_ERR "fo_recv: failed to allocate data\n");
-            rvalue = 1; /* failure */
+            rvalue = -1; /* failure */
+            goto err;
         }
         data->nddata = nddata;
         data->nlh = nlh;
@@ -130,10 +131,11 @@ int fo_recv(
         task = kthread_run(&fo_execute, (void*)data, "fo_execute");
         if (IS_ERR(task)) {
             printk("fo_recv: failed to create thread for file operation, error = %ld\n", PTR_ERR(task));
-            rvalue = 1; /* failure */
+            rvalue = -1; /* failure */
         }
     }
 
+err:
     ndmgm_put(nddata);
     return rvalue;
 }
@@ -149,7 +151,7 @@ int fo_complete(
     req = ndmgm_foreq_find(nddata, nlh->nlmsg_seq);
     if (!req) {
         printk(KERN_ERR "fo_complete: failed to obtain fo request\n");
-        return 1; /* failure */
+        return -1; /* failure */
     }
 
     debug("nlh->nlmsg_len = %d", nlh->nlmsg_len);
@@ -158,7 +160,7 @@ int fo_complete(
     recv_req = fo_deserialize(NLMSG_DATA(nlh));
     if (!recv_req) {
         printk(KERN_ERR "fo_complete: failed to deserialize req\n");
-        return 1; /* failure */
+        return -1; /* failure */
     }
 
     /* give arguments and the payload to waiting file operation */
