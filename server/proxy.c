@@ -173,13 +173,13 @@ int proxy_loop(struct proxy_dev *pdev)
 
         printf("proxy_loop: back to waiting\n");
         if ((nready = select(maxfd, /* max number of file descriptors */
-                            &rset,   /* read file descriptors */
+                            &rset,  /* read file descriptors */
                             NULL,   /* no write fd */
                             NULL,   /* no exception fd */
                             NULL)   /* no timeout */
                             ) == -1 ) {
-            printf("proxy_loop(select): errno = %d\n", errno);
             perror("proxy_loop(select)");
+            debug("errno = %d", errno);
             return -1; /* failure */
         }
         printf("proxy_loop: one of data sources is ready!\n");
@@ -239,18 +239,12 @@ int proxy_handle_remote(struct proxy_dev *pdev)
     debug("ndhead->msgtype = %d", ndhead->msgtype);
     if (ndhead->msgtype > MSGT_FO_START &&
         ndhead->msgtype < MSGT_FO_END) {
-        printf("proxy_handle_netlink: FILE OPERATION: %d\n",
+        printf("proxy_handle_remote: FILE OPERATION: %d\n",
                 ndhead->msgtype);
 
-        if (pdev->client) {
-            printf("proxy_handle_remote: sending to kernel\n");
-            netlink_send_nlh(pdev, (struct nlmsghdr *)ndhead->payload);
-        } else {
-            printf("proxy_handle_remote: sending to client\n");
-            conn_send(pdev, ndhead);
-        }
+        netlink_send_nlh(pdev, (struct nlmsghdr *)ndhead->payload);
     } else {
-        printf("proxy_handle_netlink: unknown message type: %d\n",
+        printf("proxy_handle_remote: unknown message type: %d\n",
                 ndhead->msgtype);
         return -1; /* failure */
     }
