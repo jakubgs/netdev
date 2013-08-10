@@ -127,15 +127,45 @@ int netlink_send(
 
     /* TODO get confirmation of delivery */
 
-    if(rvalue > 0) {
+    debug("rvalue = %d", rvalue);
+    if(rvalue < 0) {
         printk(KERN_INFO "netlink_send: error while sending back to user\n");
-        return 0; /* failure */
+        return -1; /* failure */
     }
 
-    return 1; /* success */
+    return 0; /* success */
 free_skb:
-    nlmsg_free(skb_out);
-    return 0;
+    nlmsg_free(skb);
+    return -1;
+}
+
+int netlink_send_skb(
+    struct netdev_data *nddata,
+    struct sk_buff *skb)
+{
+    int rvalue;
+
+    if (!skb) {
+        printk(KERN_ERR "netlink_send: skb is null\n");
+        return -1;
+    }
+
+    debug("msg type: %d, to pid: %d, msg size: %d",
+            nlmsg_hdr(skb)->nlmsg_type,
+            nddata->nlpid,
+            nlmsg_hdr(skb)->nlmsg_len);
+
+    /* send messsage,nlmsg_unicast will take care of freeing skb */
+    rvalue = nlmsg_unicast(nl_sk, skb, nddata->nlpid);
+
+    /* TODO get confirmation of delivery */
+    debug("rvalue = %d", rvalue);
+    if(rvalue < 0) {
+        printk(KERN_INFO "netlink_send: error while sending back to user\n");
+        return -1; /* failure */
+    }
+
+    return 0; /* success */
 }
 
 int netlink_echo(int pid, int seq, char *msg)
