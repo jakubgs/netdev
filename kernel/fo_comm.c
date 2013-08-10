@@ -42,7 +42,6 @@ int fo_send(
 
     req->rvalue = -1; /* assume failure, server has to change it to 0 */
     req->msgtype = msgtype;
-    req->rvalue = 0;
     req->args = args;
     req->size = size;
     req->data = data;
@@ -100,11 +99,10 @@ int fo_recv(
     struct netdev_data *nddata = NULL;
     struct task_struct *task = NULL;
     struct nlmsghdr *nlh = NULL;
-    struct fo_data *data = NULL;
+    void *data = NULL;
     int rvalue = 0; /* success */
 
     nlh = nlmsg_hdr(skb);
-    skb_pull(skb, sizeof(*nlh));
 
     nddata = ndmgm_find(nlh->nlmsg_pid);
     if (IS_ERR(nddata)) {
@@ -122,9 +120,8 @@ int fo_recv(
             rvalue = -1; /* failure */
             goto err;
         }
-        data->nddata = nddata;
-        data->nlh = nlh;
-        data->skb = skb;
+        /* when fo_recv returns netlink_recv will try to free the skb */
+        data = skb_copy(skb, GFP_KERNEL); /* we want to modify it */
 
         /* crate a new thread since we want to return control to the
          * server process so it doesn't wait needlesly */
