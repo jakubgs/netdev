@@ -120,6 +120,7 @@ int netlink_send_nlh(
     struct nlmsghdr *nlh)
 {
     struct nlmsgerr *msgerr = NULL;
+    nlh->nlmsg_pid = pdev->pid;
     debug("nlh->nlmsg_pid = %d", pdev->pid);
 
     debug("sending message to kernel");
