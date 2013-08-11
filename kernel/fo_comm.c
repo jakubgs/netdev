@@ -159,6 +159,7 @@ int fo_complete(
         return -1; /* failure */
     }
 
+    req->rvalue = recv_req->rvalue;
     /* give arguments and the payload to waiting file operation */
     if (!recv_req->args) {
         memcpy(req->args, recv_req->args, sizeof(req->size));
