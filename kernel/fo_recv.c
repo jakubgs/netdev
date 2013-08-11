@@ -9,12 +9,26 @@ int ndfo_recv_llseek(struct netdev_data *nddata, struct fo_req *req) {
     return -1;
 }
 
-int netdev_fo_read_recv_req (struct fo_req *req) {
-    return -1;
+int ndfo_recv_read(struct netdev_data *nddata, struct fo_req *req) {
+    struct s_fo_read *args = req->args;
+
+    args->rvalue = nddata->filp->f_op->write(nddata->filp,
+                                            NULL,
+                                            args->size,
+                                            args->offset);
+
+    return 0;
 }
 
-int netdev_fo_write_recv_req (struct fo_req *req) {
-    return -1;
+int ndfo_recv_write(struct netdev_data *nddata, struct fo_req *req) {
+    struct s_fo_write *args = req->args;
+
+    args->rvalue = nddata->filp->f_op->write(nddata->filp,
+                                            NULL,
+                                            args->size,
+                                            args->offset);
+
+    return 0;
 }
 
 int ndfo_recv_aio_read(struct netdev_data *nddata, struct fo_req *req) {
@@ -41,16 +55,39 @@ int ndfo_recv_mmap(struct netdev_data *nddata, struct fo_req *req) {
     return -1;
 }
 
-int netdev_fo_open_recv_req (struct fo_req *req) {
-    return -1;
+int ndfo_recv_open(struct netdev_data *nddata, struct fo_req *req) {
+    struct s_fo_open *args = req->args;
+    int err = 0;
+    int flags = O_RDWR | O_LARGEFILE;
+    int mode = 0;
+
+    nddata->filp = filp_open(nddata->devname, flags, mode);
+
+    if (IS_ERR(nddata->filp)) {
+        err = PTR_ERR(nddata->filp);
+        printk(KERN_ERR "ndfo_recv_open_req: err = %d\n", err);
+        return -1; /* failure */
+    }
+
+    if (!nddata->filp->f_op) {
+        printk(KERN_ERR "ndfo_recv_open_req: no file operations\n");
+        return -1; /* failure */
+    }
+    
+    args->rvalue = 0;
+    return 0; /* success */
 }
 
 int ndfo_recv_flush(struct netdev_data *nddata, struct fo_req *req) {
     return -1;
 }
 
-int netdev_fo_release_recv_req (struct fo_req *req) {
-    return -1;
+int ndfo_recv_release(struct netdev_data *nddata, struct fo_req *req) {
+    struct s_fo_release *args = req->args;
+
+    args->rvalue = filp_close(nddata->filp, NULL);
+
+    return args->rvalue;
 }
 
 int ndfo_recv_fsync(struct netdev_data *nddata, struct fo_req *req) {
