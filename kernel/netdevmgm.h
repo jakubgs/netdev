@@ -31,6 +31,9 @@ struct netdev_data {
     struct rw_semaphore sem; /* necessary since threads can use this */
     struct kfifo fo_queue; /* queue for file operations */
     struct kmem_cache *queue_pool; /* pool of memory for fo_req structs */
+    /* data used only by server */
+    struct file *filp;
+    struct inode *inode;
 };
 
 struct netdev_data * ndmgm_alloc_data(int nlpid, char *name);
