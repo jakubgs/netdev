@@ -4,32 +4,32 @@
 #include "fo_comm.h"
 
 /* functions for executing file operations sent from client */
-int netdev_fo_llseek_recv_req (struct fo_req *req);
-int netdev_fo_read_recv_req (struct fo_req *req);
-int netdev_fo_write_recv_req (struct fo_req *req);
-int netdev_fo_aio_read_recv_req (struct fo_req *req);
-int netdev_fo_aio_write_recv_req (struct fo_req *req);
-int netdev_fo_poll_recv_req (struct fo_req *req);
-int netdev_fo_unlocked_ioctl_recv_req (struct fo_req *req);
-int netdev_fo_compat_ioctl_recv_req (struct fo_req *req);
-int netdev_fo_mmap_recv_req (struct fo_req *req);
-int netdev_fo_open_recv_req (struct fo_req *req);
-int netdev_fo_flush_recv_req (struct fo_req *req);
-int netdev_fo_release_recv_req (struct fo_req *req);
-int netdev_fo_fsync_recv_req (struct fo_req *req);
-int netdev_fo_aio_fsync_recv_req (struct fo_req *req);
-int netdev_fo_fasync_recv_req (struct fo_req *req);
-int netdev_fo_lock_recv_req (struct fo_req *req);
-int netdev_fo_sendpage_recv_req (struct fo_req *req);
-int netdev_fo_get_unmapped_area_recv_req (struct fo_req *req);
-int netdev_fo_check_flags_recv_req (struct fo_req *req);
-int netdev_fo_flock_recv_req (struct fo_req *req);
-int netdev_fo_splice_write_recv_req (struct fo_req *req);
-int netdev_fo_splice_read_recv_req (struct fo_req *req);
-int netdev_fo_setlease_recv_req (struct fo_req *req);
-int netdev_fo_fallocate_recv_req (struct fo_req *req);
-int netdev_fo_show_fdinfo_recv_req (struct fo_req *req);
+int ndfo_recv_llseek(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_read(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_write(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_aio_read(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_aio_write(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_poll(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_unlocked_ioctl(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_compat_ioctl(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_mmap(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_open(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_flush(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_release(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_fsync(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_aio_fsync(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_fasync(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_lock(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_sendpage(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_get_unmapped_area(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_check_flags(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_flock(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_splice_write(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_splice_read(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_setlease(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_fallocate(struct netdev_data *nddata, struct fo_req *req);
+int ndfo_recv_show_fdinfo(struct netdev_data *nddata, struct fo_req *req);
 
-extern int (*netdev_recv_fops[])(struct fo_req*);
+extern int (*netdev_recv_fops[])(struct netdev_data*, struct fo_req*);
 
 #endif /* _FO_RECV_H */
