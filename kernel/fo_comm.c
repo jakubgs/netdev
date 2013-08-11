@@ -86,7 +86,6 @@ int fo_send(
     debug("WAIT COMPLETE, seq = %ld", req->seq);
 
     rvalue = req->rvalue;
-    debug("rvalue = %d", rvalue);
 out:
     kmem_cache_free(nddata->queue_pool, req);
     ndmgm_put(nddata);
@@ -170,7 +169,7 @@ int fo_complete(
 
     debug("completing file operation, seq = %ld", req->seq);
     complete(&req->comp);
-    
+
     kfree(recv_req);
     return 0; /* success */
 }
@@ -179,7 +178,7 @@ int fo_complete(
 int fo_execute(
     void *data)
 {
-    int (*fofun)(struct fo_req*) = NULL;
+    int (*fofun)(struct netdev_data*, struct fo_req*) = NULL;
     struct sk_buff *skb = data;
     struct netdev_data *nddata = NULL;
     struct nlmsghdr *nlh = NULL;
@@ -210,7 +209,7 @@ int fo_execute(
 
     printk(KERN_INFO "fo_execute: executing file operation = %d\n",
                     nlh->nlmsg_type);
-    
+
     /* get number of file operation for array */
     fonum = nlh->nlmsg_type - (MSGT_FO_START+1);
     /* get the correct file operation function from the array */
@@ -222,7 +221,7 @@ int fo_execute(
     }
 
     /* execute the file operation */
-    req->rvalue = fofun(req);
+    req->rvalue = fofun(nddata, req);
     if (req->rvalue == -1) {
         printk(KERN_ERR "fo_execute: file operation failed\n");
         rvalue = -1;
