@@ -26,7 +26,8 @@
 /* 2nd argument to listen() */
 #define NETDEV_LISTENQ          1024
 
-/* defines the protocol used, we want our own protocol */
+/* defines the netlink bus used, we want our own protocol so we use the 
+ * last one of the 32 available buses */
 #define NETLINK_PROTOCOL        31
 
 /* define type of message for netlink driver control,
