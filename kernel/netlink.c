@@ -73,7 +73,7 @@ void netlink_recv(struct sk_buff *skb)
     } else {
         /* if we don't send ack we have to free sk_buff */
         debug("not sending ACK");
-        kfree_skb(skb);
+        dev_kfree_skb(skb);
     }
 }
 
