@@ -291,8 +291,16 @@ void * fo_serialize(
     size += sizeof(req->data_size);
     memcpy(data + size, &req->rvalue,    sizeof(req->rvalue));
     size += sizeof(req->rvalue);
+    if (req->args == NULL) {
+        debug("no args");
+        return data;
+    }
     memcpy(data + size, req->args,       req->size);
     size += req->size;
+    if (req->data == NULL) {
+        debug("no data");
+        return data;
+    }
     memcpy(data + size, req->data,       req->data_size);
 
     return data;
@@ -316,6 +324,10 @@ struct fo_req * fo_deserialize(
     memcpy(&req->data_size, data + size, sizeof(req->data_size));
     size += sizeof(req->data_size);
     memcpy(&req->rvalue,    data + size, sizeof(req->rvalue));
+    if (req->size == 0) {
+        debug("no args");
+        return req;
+    }
     size += sizeof(req->rvalue);
     req->args = kzalloc(req->size, GFP_KERNEL);
     if (!req->args) {
@@ -323,6 +335,10 @@ struct fo_req * fo_deserialize(
         goto free_req;
     }
     memcpy(req->args,       data + size, req->size);
+    if (req->data_size == 0) {
+        debug("no data");
+        return req;
+    }
     size += req->size;
     req->data = kzalloc(req->data_size, GFP_KERNEL);
     if (!req->data) {
