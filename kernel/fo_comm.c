@@ -235,19 +235,21 @@ int fo_execute(
     }
     debug("bufflen = %zu", bufflen);
 
-    /* make a copy of sk_buff that  has enough space for our payload */
-    skbtmp = skb;
-    skb = skb_copy_expand(skb, 0, bufflen - nlmsg_len(nlh), GFP_KERNEL);
-    if (!skb) {
-        printk(KERN_ERR "fo_exectue: failed to expand skb\n");
-        skb = skbtmp;
-        goto err;
-    }
-    dev_kfree_skb(skbtmp); /* we will be using the copy now */
+    /* make a copy of sk_buff that has enough space for our payload */
+    if (nlmsg_len(nlh) < bufflen) {
+        skbtmp = skb;
+        skb = skb_copy_expand(skb, 0, bufflen - nlmsg_len(nlh), GFP_KERNEL);
+        if (!skb) {
+            printk(KERN_ERR "fo_exectue: failed to expand skb\n");
+            skb = skbtmp;
+            goto err;
+        }
+        dev_kfree_skb(skbtmp); /* we will be using the copy now */
 
-    nlh = nlmsg_hdr(skb); /* get the new netlink header */
-    nlh->nlmsg_len = NLMSG_SPACE(bufflen);
-    skb->len = nlh->nlmsg_len;
+        nlh = nlmsg_hdr(skb); /* get the new netlink header */
+        nlh->nlmsg_len = NLMSG_SPACE(bufflen);
+        skb->len = nlh->nlmsg_len;
+    }
 
     memcpy(nlmsg_data(nlh), buff, bufflen);
     rvalue = 0; /* success */
