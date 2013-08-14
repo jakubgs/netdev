@@ -154,6 +154,7 @@ int netlink_send_skb(
             nlmsg_hdr(skb)->nlmsg_type,
             nddata->nlpid,
             nlmsg_hdr(skb)->nlmsg_len);
+    debug("skb->len = %d", skb->len);
 
     /* send messsage,nlmsg_unicast will take care of freeing skb */
     rvalue = nlmsg_unicast(nl_sk, skb, nddata->nlpid);
