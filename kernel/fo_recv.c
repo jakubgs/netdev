@@ -12,8 +12,11 @@ int ndfo_recv_llseek(struct netdev_data *nddata, struct fo_req *req) {
 int ndfo_recv_read(struct netdev_data *nddata, struct fo_req *req) {
     struct s_fo_read *args = req->args;
 
-    args->rvalue = nddata->filp->f_op->write(nddata->filp,
-                                            NULL,
+    req->data = kzalloc(args->size , GFP_KERNEL);
+    req->data_size = args->size;
+
+    args->rvalue = nddata->filp->f_op->read(nddata->filp,
+                                            req->data,
                                             args->size,
                                             args->offset);
 
@@ -23,8 +26,10 @@ int ndfo_recv_read(struct netdev_data *nddata, struct fo_req *req) {
 int ndfo_recv_write(struct netdev_data *nddata, struct fo_req *req) {
     struct s_fo_write *args = req->args;
 
+    req->data_size = args->size;
+
     args->rvalue = nddata->filp->f_op->write(nddata->filp,
-                                            NULL,
+                                            req->data,
                                             args->size,
                                             args->offset);
 
@@ -63,6 +68,7 @@ int ndfo_recv_open(struct netdev_data *nddata, struct fo_req *req) {
 
     nddata->filp = filp_open(nddata->devname, flags, mode);
 
+    debug("filp_open executed");
     if (IS_ERR(nddata->filp)) {
         err = PTR_ERR(nddata->filp);
         printk(KERN_ERR "ndfo_recv_open_req: err = %d\n", err);
@@ -73,8 +79,9 @@ int ndfo_recv_open(struct netdev_data *nddata, struct fo_req *req) {
         printk(KERN_ERR "ndfo_recv_open_req: no file operations\n");
         return -1; /* failure */
     }
-    
+
     args->rvalue = 0;
+    debug("success");
     return 0; /* success */
 }
 
@@ -87,7 +94,7 @@ int ndfo_recv_release(struct netdev_data *nddata, struct fo_req *req) {
 
     args->rvalue = filp_close(nddata->filp, NULL);
 
-    return args->rvalue;
+    return 0;
 }
 
 int ndfo_recv_fsync(struct netdev_data *nddata, struct fo_req *req) {
