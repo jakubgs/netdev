@@ -270,7 +270,8 @@ int recvall(int conn_fd, struct msghdr *msgh, int size) {
     int rvalue = 0, bytes = 0;
 
     do {
-        rvalue = recvmsg(conn_fd, msgh, 0);
+        rvalue = recvmsg(conn_fd, msgh, msgh->msg_flags);
+        debug("rvalue = %d", rvalue);
         if (rvalue == -1) {
             perror("recvall(recvmsg)");
             return -1; /* falure */
@@ -291,7 +292,8 @@ int sendall(int conn_fd, struct msghdr *msgh, int size) {
     int rvalue = 0, bytes = 0;
 
     do {
-        rvalue = sendmsg(conn_fd, msgh, MSG_DONTWAIT);
+        rvalue = sendmsg(conn_fd, msgh, msgh->msg_flags | MSG_DONTWAIT);
+        debug("rvalue = %d", rvalue);
         if (rvalue == -1) {
             perror("sendmsg(sendmsg)");
             return -1; /* falure */
