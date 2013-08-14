@@ -158,35 +158,47 @@ struct nlmsghdr * netlink_recv(
     struct nlmsghdr *nlh = NULL;
     struct msghdr msgh = {0};
     struct iovec iov = {0};
-    size_t bufflen = MAX_PAYLOAD; /* TODO this might be too small */
-    char buffer[bufflen];
+    size_t bufflen = sizeof(*nlh);
+    void *buffer = malloc(bufflen);
 
     /* netlink header is our payload */
     iov.iov_base = buffer;
     iov.iov_len = bufflen;
     msgh.msg_iov = &iov; /* this normally is an array of */
     msgh.msg_iovlen = 1;
+    debug("msgh.msg_flags = %d", msgh.msg_flags);
+    msgh.msg_flags = MSG_PEEK; /* first we need the full msg size */
 
-    debug("reading header bytes = %zu", bufflen);
+    debug("peeking at header bytes = %zu", bufflen);
     /* the minimum is the size of the nlmsghdr alone */
-    bufflen = recvall(pdev->nl_fd, &msgh, sizeof(*nlh));
+    bufflen = recvall(pdev->nl_fd, &msgh, bufflen);
     if (bufflen == -1) {
         printf("netlink_recv: failed to read message\n");
-        return  NULL;
-    }
-
-    nlh = malloc(bufflen);
-    if (!nlh) {
-        perror("netlink_recv(malloc)");
         goto err;
     }
-    memcpy(nlh, buffer, bufflen);
 
+    nlh = buffer;
     debug("msgtype = %d, size = %d", nlh->nlmsg_type, nlh->nlmsg_len);
 
+    /* increase the buffer size if needbe */
+    bufflen = nlh->nlmsg_len;
+    buffer = realloc(buffer, bufflen);
+    iov.iov_base = buffer;
+    iov.iov_len = bufflen;
+    msgh.msg_flags = 0; /* get rid of MSG_PEEK */
+
+    /* get the rest of message */
+    debug("receiving full message bytes = %zu", bufflen);
+    bufflen = recvall(pdev->nl_fd, &msgh, bufflen);
+    if (bufflen == -1) {
+        printf("netlink_recv: failed to read message\n");
+        goto err;
+    }
+
+    nlh = buffer;
     return nlh;
 err:
-    free(nlh);
+    free(buffer);
     return NULL;
 }
 
