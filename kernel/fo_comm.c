@@ -125,6 +125,7 @@ int fo_recv(
         /* crate a new thread since we want to return control to the
          * server process so it doesn't wait needlesly */
         task = kthread_run(&fo_execute, (void*)data, "fo_execute");
+        debug("task started!");
         if (IS_ERR(task)) {
             printk("fo_recv: failed to create thread for file operation, error = %ld\n", PTR_ERR(task));
             rvalue = -1; /* failure */
@@ -161,10 +162,10 @@ int fo_complete(
 
     req->rvalue = recv_req->rvalue;
     /* give arguments and the payload to waiting file operation */
-    if (!recv_req->args) {
-        memcpy(req->args, recv_req->args, sizeof(req->size));
+    if (recv_req->args) {
+        memcpy(req->args, recv_req->args, recv_req->size);
     }
-    if (!recv_req->data) {
+    if (recv_req->data) {
         memcpy(req->data, recv_req->data, recv_req->data_size);
     }
 
