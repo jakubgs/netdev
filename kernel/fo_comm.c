@@ -181,14 +181,14 @@ int fo_execute(
     void *data)
 {
     int (*fofun)(struct netdev_data*, struct fo_req*) = NULL;
-    struct sk_buff *skb = data;
+    struct sk_buff *skb = data, *skbtmp;
     struct netdev_data *nddata = NULL;
     struct nlmsghdr *nlh = NULL;
     struct fo_req *req = NULL;
     void *buff = NULL;
     size_t bufflen = 0;
     int fonum = 0;
-    int rvalue = 0; /* success */
+    int rvalue = -ENODATA;
 
     nlh = nlmsg_hdr(skb);
 
@@ -196,7 +196,7 @@ int fo_execute(
     if (IS_ERR(nddata)) {
         printk(KERN_ERR "fo_recv: failed to find device for pid = %d\n",
                 nlh->nlmsg_pid);
-        return -1; /* failure */
+        goto err;
     }
     ndmgm_get(nddata);
 
@@ -205,7 +205,6 @@ int fo_execute(
     req = fo_deserialize(NLMSG_DATA(nlh));
     if (!req) {
         printk(KERN_ERR "fo_execute: failed to deserialize req\n");
-        rvalue = -1; /* failure */
         goto err;
     }
 
@@ -218,7 +217,6 @@ int fo_execute(
     fofun = netdev_recv_fops[fonum];
     if (!fofun) {
         printk(KERN_ERR "fo_execute: file operation not implemented\n");
-        rvalue = -1; /* failure */
         goto err;
     }
 
@@ -226,7 +224,6 @@ int fo_execute(
     req->rvalue = fofun(nddata, req);
     if (req->rvalue == -1) {
         printk(KERN_ERR "fo_execute: file operation failed\n");
-        rvalue = -1;
         goto err;
     }
 
@@ -234,9 +231,9 @@ int fo_execute(
     buff = fo_serialize(req, &bufflen);
     if (!buff) {
         printk(KERN_ERR "fo_execute: failed to serialize req\n");
-        rvalue = -1; /* failure */
         goto err;
     }
+    debug("bufflen = %zu", bufflen);
 
     /* make sure sk_buff has enough space for our payload */
     skb_copy_expand(skb, 0, bufflen, GFP_KERNEL);
