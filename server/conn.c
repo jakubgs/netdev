@@ -11,13 +11,19 @@ int conn_send(struct proxy_dev *pdev, struct netdev_header *ndhead) {
     struct msghdr msgh = {0};
     struct iovec iov = {0};
     size_t size = sizeof(*ndhead) + ndhead->size;
+    void *buff = NULL;
 
     debug("sending bytes = %zu", size);
 
+    buff = malloc(size);
+    if (!buff) {
+        perror("conn_send(malloc)");
+        return -1;
+    }
     msgh.msg_iov = &iov;
     msgh.msg_iovlen = 1;
     iov.iov_len = size;
-    iov.iov_base = malloc(size);
+    iov.iov_base = buff;
     if (!iov.iov_base) {
         perror("conn_send(malloc)");
         return -1;
@@ -31,7 +37,7 @@ int conn_send(struct proxy_dev *pdev, struct netdev_header *ndhead) {
         return -1; /* failure */
     }
 
-    free(iov.iov_base);
+    free(buff);
 
     return 0; /* success */
 }
@@ -279,6 +285,8 @@ int recvall(int conn_fd, struct msghdr *msgh, int size) {
             return -1;
         }
         bytes += rvalue;
+        msgh->msg_iov->iov_base += rvalue;
+        msgh->msg_iov->iov_len = bytes;
     } while (bytes < size);
 
     if (msgh->msg_flags == MSG_TRUNC) {
@@ -301,6 +309,8 @@ int sendall(int conn_fd, struct msghdr *msgh, int size) {
             return -1;
         }
         bytes += rvalue;
+        msgh->msg_iov->iov_base += rvalue;
+        msgh->msg_iov->iov_len = bytes;
     } while (bytes < size);
 
     return 0; /* success */
