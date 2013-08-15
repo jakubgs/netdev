@@ -144,6 +144,7 @@ int fo_complete(
 {
     struct fo_req *req = NULL;
     struct fo_req *recv_req = NULL;
+    int rvalue = 0;
 
     req = ndmgm_foreq_find(nddata, nlh->nlmsg_seq);
     if (!req) {
@@ -160,6 +161,7 @@ int fo_complete(
         return -1; /* failure */
     }
 
+    debug("recv_req->rvalue = %d", recv_req->rvalue);
     req->rvalue = recv_req->rvalue;
     /* give arguments and the payload to waiting file operation */
     if (recv_req->args) {
