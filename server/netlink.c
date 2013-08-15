@@ -73,7 +73,7 @@ int netlink_send(
     msgh.msg_iovlen = 1; /* TODO, we won't always use just one */
 
     if (sendall(pdev->nl_fd, &msgh, nlh->nlmsg_len) == -1) {
-        printf("netlink_send: failed to receive message\n");
+        printf("netlink_send: failed to send message\n");
     }
 
     free(nlh);
@@ -121,7 +121,7 @@ int netlink_send_nlh(
 {
     struct nlmsgerr *msgerr = NULL;
     nlh->nlmsg_pid = pdev->pid;
-    debug("nlh->nlmsg_pid = %d", pdev->pid);
+    debug("nlh->nlmsg_pid = %d", nlh->nlmsg_pid);
 
     debug("sending message to kernel");
     /* send everything */
