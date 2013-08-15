@@ -169,6 +169,36 @@ int netlink_send_skb(
     return 0; /* success */
 }
 
+struct sk_buff * netlink_pack_skb(
+    struct nlmsghdr *nlh,
+    void *buff,
+    size_t bufflen)
+{
+    struct sk_buff *skb;
+
+    skb = alloc_skb(NLMSG_SPACE(bufflen), GFP_KERNEL);
+    if (!skb) {
+        printk(KERN_ERR "fo_exectue: failed to expand skb\n");
+        return NULL;
+    }
+
+    nlh = nlmsg_put(
+                    skb,
+                    nlh->nlmsg_pid,
+                    nlh->nlmsg_seq,
+                    nlh->nlmsg_type,
+                    bufflen,
+                    NLM_F_ACK);
+    if (!nlh) {
+        printk(KERN_ERR "netlink_pack_skb: insufficient tailroom\n");
+        return NULL;
+    }
+
+    memcpy(nlmsg_data(nlh), buff, bufflen);
+
+    return skb; /* success */
+}
+
 int netlink_echo(int pid, int seq, char *msg)
 {
     struct nlmsghdr *nlh;
