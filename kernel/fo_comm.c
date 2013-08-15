@@ -1,6 +1,7 @@
 #include <linux/slab.h>
 #include <linux/kthread.h>
 #include <net/netlink.h>
+#include <asm/uaccess.h>
 
 #include "protocol.h"
 #include "netlink.h"
@@ -168,7 +169,18 @@ int fo_complete(
         memcpy(req->args, recv_req->args, recv_req->size);
     }
     if (recv_req->data) {
-        memcpy(req->data, recv_req->data, recv_req->data_size);
+        debug("access_ok = %ld", access_ok(VERIFY_WRITE, req->data, req->size));
+        /* req->data is always in userspace */
+        /* TODO this is not working! */
+        rvalue = copy_to_user(req->data,
+                            recv_req->data,
+                            recv_req->data_size);
+        if (rvalue > 0) {
+            debug("recv_req->data_size = %zu, rvalue = %d",
+                    recv_req->data_size, rvalue);
+            printk(KERN_ERR "fo_complete: failed to copy to user\n");
+            return -1;
+        }
     }
 
     debug("completing file operation, seq = %ld", req->seq);
@@ -305,7 +317,15 @@ void * fo_serialize(
         debug("no data");
         return data;
     }
-    memcpy(data + size, req->data,       req->data_size);
+    /* req->data is always in user space */
+    size = copy_from_user(data + size, req->data, req->data_size);
+    if (size > 0) {
+        debug("req->data_size = %zu, rvalue = %zu",
+                req->size, size);
+        printk(KERN_ERR "fo_serialize: failed to copy form user\n");
+        kfree(data);
+        return NULL;
+    }
 
     return data;
 }
