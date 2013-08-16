@@ -122,7 +122,7 @@ int netlink_send(
     struct sk_buff *skb;
     int rvalue;
 
-    debug("msg type: %d, to pid: %d, msg size: %zu",
+    debug("msg type: %d, pid: %d, size: %zu",
             msgtype, nddata->nlpid, bufflen);
 
     /* allocate space for message header and it's payload */
@@ -147,8 +147,6 @@ int netlink_send(
         goto free_skb;
     }
 
-    debug("nlh->nlmsg_len = %d", nlh->nlmsg_len);
-
     NETLINK_CB(skb).portid = nddata->nlpid;
     NETLINK_CB(skb).dst_group = 0; /* not in mcast group */
 
@@ -161,7 +159,6 @@ int netlink_send(
 
     /* TODO get confirmation of delivery */
 
-    debug("rvalue = %d", rvalue);
     if(rvalue < 0) {
         printk(KERN_INFO "netlink_send: error while sending back to user\n");
         return -1; /* failure */
@@ -184,11 +181,10 @@ int netlink_send_skb(
         return -1;
     }
 
-    debug("msg type: %d, to pid: %d, msg size: %d",
+    debug("msg type: %d, pid: %d, size: %d",
             nlmsg_hdr(skb)->nlmsg_type,
             nddata->nlpid,
             nlmsg_hdr(skb)->nlmsg_len);
-    debug("skb->len = %d", skb->len);
 
     NETLINK_CB(skb).portid = nddata->nlpid;
 
@@ -197,8 +193,6 @@ int netlink_send_skb(
     rvalue = nlmsg_unicast(nl_sk, skb, nddata->nlpid);
     spin_unlock(&nddata->nllock);
 
-    /* TODO get confirmation of delivery */
-    debug("rvalue = %d", rvalue);
     if(rvalue < 0) {
         printk(KERN_INFO "netlink_send: error while sending back to user\n");
         return -1; /* failure */
