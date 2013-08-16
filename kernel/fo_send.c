@@ -47,11 +47,17 @@ ssize_t ndfo_send_read(struct file *filp, char __user *data, size_t size, loff_t
     rvalue = fo_send(MSGT_FO_READ,
                     filp->private_data,
                     &args, sizeof(args),
-                    data, 0);
+                    args.data, 0);
 
-    if (rvalue < 9) {
+    if (rvalue < 0) {
         debug("rvalue = %zu", rvalue);
         return rvalue;
+    }
+    rvalue = copy_to_user(data, args.data, args.rvalue);
+    if (rvalue > 0) {
+        debug("rvalue = %zu", rvalue);
+        printk(KERN_ERR "ndfo_send_read: failed to copy to user\n");
+        return -1;
     }
     return args.rvalue;
 }
@@ -59,21 +65,37 @@ ssize_t ndfo_send_write(struct file *filp, const char __user *data, size_t size,
 {
     size_t rvalue = 0;
     struct s_fo_write args = {
-        .data = data,
         .size = size,
         .offset = offset,
         .rvalue = -EIO
     };
+    debug("size = %zu", size);
+    if (size >= NETDEV_MESSAGE_LIMIT) {
+        printk(KERN_ERR "ndfo_send_write: buffor too big for message\n");
+        return -EINVAL;
+    }
+    args.data = kmalloc(size, GFP_KERNEL);
+    if (!args.data) {
+        printk(KERN_ERR "ndfo_send_write: failed to allocate args.data\n");
+        return -ENOMEM;
+    }
+
+    rvalue = copy_from_user(args.data, data, size);
+    if (rvalue > 0) {
+        debug("rvalue = %zu", rvalue);
+        printk(KERN_ERR "ndfo_send_write: failed to copy from user\n");
+        return -EIO;
+    }
 
     rvalue = fo_send(MSGT_FO_WRITE,
                     filp->private_data,
                     &args, sizeof(args),
-                    (void*)data, size);
+                    args.data, size);
 
     if (rvalue < 0) {
         debug("rvalue = %zu", rvalue);
         return rvalue;
-    }
+    } 
     return args.rvalue;
 }
 size_t ndfo_send_aio_read(struct kiocb *a, const struct iovec *b, unsigned long c, loff_t offset)
