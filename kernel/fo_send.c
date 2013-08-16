@@ -146,25 +146,39 @@ int ndfo_send_open(struct inode *inode, struct file *filp)
 int ndfo_send_flush(struct file *filp, fl_owner_t id)
 {
     int rvalue = 0;
+    struct s_fo_flush args = {
+        .rvalue = -EIO
+    };
 
     rvalue = fo_send(MSGT_FO_FLUSH,
                     filp->private_data,
-                    NULL, 0,
+                    &args, sizeof(args),
                     NULL, 0);
 
     if (rvalue < 0) {
         debug("rvalue = %d", rvalue);
         return rvalue;
     }
-    return -EIO;
+    debug("args.rvalue = %d", args.rvalue);
+    return args.rvalue;
 }
 int ndfo_send_release(struct inode *a, struct file *filp)
 {
-    fo_send(MSGT_FO_RELEASE,
-            filp->private_data,
-            NULL, 0,
-            NULL, 0);
-    return -EIO;
+    int rvalue = 0;
+    struct s_fo_release args = {
+        .rvalue = -EIO
+    };
+
+    rvalue = fo_send(MSGT_FO_RELEASE,
+                    filp->private_data,
+                    &args, sizeof(args),
+                    NULL, 0);
+    if (rvalue < 0) {
+        debug("rvalue = %d", rvalue);
+        return rvalue;
+    }
+    debug("args.rvalue = %d", args.rvalue);
+    return args.rvalue;
 }
 int ndfo_send_fsync(struct file *filp, loff_t b, loff_t offset, int d)
 {
