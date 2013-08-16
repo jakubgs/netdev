@@ -64,6 +64,8 @@ int netlink_send(
     }
 
     debug("msgtype = %d, size = %d", nlh->nlmsg_type, nlh->nlmsg_len);
+    debug("pid = %d", nlh->nlmsg_pid);
+    debug("seq = %d", nlh->nlmsg_seq);
 
     /* netlink header is our payload */
     iov.iov_base = (void *)nlh;
@@ -166,7 +168,6 @@ struct nlmsghdr * netlink_recv(
     iov.iov_len = bufflen;
     msgh.msg_iov = &iov; /* this normally is an array of */
     msgh.msg_iovlen = 1;
-    debug("msgh.msg_flags = %d", msgh.msg_flags);
     msgh.msg_flags = MSG_PEEK; /* first we need the full msg size */
 
     debug("peeking at header bytes = %zu", bufflen);
@@ -179,6 +180,8 @@ struct nlmsghdr * netlink_recv(
 
     nlh = buffer;
     debug("msgtype = %d, size = %d", nlh->nlmsg_type, nlh->nlmsg_len);
+    debug("pid = %d", nlh->nlmsg_pid);
+    debug("seq = %d", nlh->nlmsg_seq);
 
     /* increase the buffer size if needbe */
     bufflen = nlh->nlmsg_len;
