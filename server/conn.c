@@ -49,7 +49,7 @@ struct netdev_header * conn_recv(struct proxy_dev *pdev) {
     int ndsize = sizeof(*ndhead);
 
     ndhead = malloc(ndsize);
-    
+
     msgh.msg_iov = &iov;
     msgh.msg_iovlen = 1;
     iov.iov_base = (void *)ndhead;
@@ -70,7 +70,7 @@ struct netdev_header * conn_recv(struct proxy_dev *pdev) {
         free(ndhead);
         return NULL;
     }
-    
+
     return ndhead;
 }
 
@@ -164,7 +164,7 @@ int conn_client(struct proxy_dev *pdev) {
         printf("conn_client: wrong payload size!\n");
         return -1; /* failure */
     }
- 
+
     version = *((int*)ndhead->payload);
     printf("conn_client: received version = %d\n", version);
     /* check version number */
@@ -208,7 +208,6 @@ int conn_send_dev_reg(struct proxy_dev *pdev) {
     }
 
     free(ndhead);
-    debug("receiving reply");
     ndhead = conn_recv(pdev);
 
     if (!ndhead) {
@@ -217,7 +216,7 @@ int conn_send_dev_reg(struct proxy_dev *pdev) {
     }
 
     rvalue = *((int*)ndhead->payload);
-    
+
     if (rvalue != NETDEV_PROTOCOL_SUCCESS) {
         printf("conn_send_dev_reg: server failed to register device\n");
         return -1;
@@ -235,14 +234,12 @@ int conn_recv_dev_reg(struct proxy_dev *pdev) {
     struct netdev_header *ndhead;
     int reply = NETDEV_PROTOCOL_SUCCESS;
 
-    debug("receiving device name");
     ndhead = conn_recv(pdev);
 
     if (ndhead->msgtype != MSGT_CONTROL_REG_SERVER) {
         printf("conn_recv_dev_reg: wrong message type!\n");
         return -1; /* failure */
     }
-    debug("correct message type");
 
     pdev->remote_dev_name = malloc(ndhead->size);
     if (!pdev->remote_dev_name) {
@@ -261,7 +258,6 @@ int conn_recv_dev_reg(struct proxy_dev *pdev) {
     ndhead->payload = malloc(sizeof(reply));
     memcpy(ndhead->payload, &reply, sizeof(reply));
 
-    debug("sending reply");
     if (conn_send(pdev, ndhead) == -1) {
         printf("conn_recv_dev_reg: failed to send reply\n");
         return -1;
@@ -277,7 +273,7 @@ int recvall(int conn_fd, struct msghdr *msgh, int size) {
 
     do {
         rvalue = recvmsg(conn_fd, msgh, msgh->msg_flags);
-        debug("rvalue = %d", rvalue);
+        //debug("rvalue = %d", rvalue);
         if (rvalue == -1) {
             perror("recvall(recvmsg)");
             return -1; /* falure */
@@ -297,7 +293,7 @@ int sendall(int conn_fd, struct msghdr *msgh, int size) {
 
     do {
         rvalue = sendmsg(conn_fd, msgh, msgh->msg_flags | MSG_DONTWAIT);
-        debug("rvalue = %d", rvalue);
+        //debug("rvalue = %d", rvalue);
         if (rvalue == -1) {
             perror("sendmsg(sendmsg)");
             return -1; /* falure */
