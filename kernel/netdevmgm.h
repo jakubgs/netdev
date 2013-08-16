@@ -25,6 +25,7 @@ struct netdev_data {
     char *devname; /* name of the device provided by the process */
     atomic_t users; /* counter of threads using this objecto */
     atomic_t curseq; /* last used sequence number for this device */
+    spinlock_t nllock; /* netlink lock ensuring proper order for ACK msg */
     struct cdev *cdev; /* internat struct representing char devices */
     struct device *device;
     struct hlist_node hnode; /* to use with hastable */
