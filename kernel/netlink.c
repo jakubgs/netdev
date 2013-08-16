@@ -23,8 +23,9 @@ void prnttime(void) {
 
 void netlink_recv(struct sk_buff *skb)
 {
-    struct nlmsghdr *nlh;
+    struct netdev_data *nddata = NULL;
     struct task_struct *task = NULL;
+    struct nlmsghdr *nlh = NULL;
     int pid, msgtype, seq, err = 0;
     void *data;
 
@@ -34,7 +35,8 @@ void netlink_recv(struct sk_buff *skb)
     seq     = nlh->nlmsg_seq;
     msgtype = nlh->nlmsg_type;
 
-    debug("msg type: %d, from pid: %d, msg size: %d",
+
+    debug("msg type: %d, pid: %d, size: %d",
             msgtype, pid, nlh->nlmsg_len);
     if ( pid == 0 ) {
         printk(KERN_ERR "netlink_recv: message from kernel");
@@ -70,8 +72,17 @@ void netlink_recv(struct sk_buff *skb)
             break;
         }
     } else if ( msgtype > MSGT_FO_START && msgtype < MSGT_FO_END ) {
-        debug("file opration message");
-        data = skb_copy(skb, GFP_KERNEL);/* we will use this skb for ACK*/
+        /* if it's file operation device must exist */
+        nddata = ndmgm_find(pid);
+        if (!nddata) {
+            printk(KERN_ERR "netlink_recv: failed to find nddata\n");
+            return;
+        }
+        /* lock to make sure we send ACK first */
+        spin_lock(&nddata->nllock);
+
+        /* we will use this skb for ACK*/
+        data = skb_copy(skb, GFP_KERNEL);
         /* crate a new thread so server doesn't wait for ACK */
         task = kthread_run(&fo_recv, data, "fo_recv");
         if (IS_ERR(task)) {
@@ -86,14 +97,16 @@ void netlink_recv(struct sk_buff *skb)
 
     /* if error or if this message says it wants a response */
     if ( err || (nlh->nlmsg_flags & NLM_F_ACK )) {
-        prnttime();
         netlink_ack(skb, nlh, err); /* err should be 0 when no error */
-        prnttime();
         debug("SENT ACK, err = %d", err);
     } else {
         /* if we don't send ack we have to free sk_buff */
         debug("not sending ACK");
         dev_kfree_skb(skb);
+    }
+    /* if nddata is NULL the spinlock is not locked */
+    if (nddata) {
+        spin_unlock(&nddata->nllock);
     }
 }
 
@@ -179,10 +192,10 @@ int netlink_send_skb(
 
     NETLINK_CB(skb).portid = nddata->nlpid;
 
+    spin_lock(&nddata->nllock); /* to make sure ACK is sent first */
     /* send messsage,nlmsg_unicast will take care of freeing skb */
-    prnttime();
     rvalue = nlmsg_unicast(nl_sk, skb, nddata->nlpid);
-    prnttime();
+    spin_unlock(&nddata->nllock);
 
     /* TODO get confirmation of delivery */
     debug("rvalue = %d", rvalue);
