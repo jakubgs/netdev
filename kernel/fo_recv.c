@@ -6,7 +6,17 @@
 #include "dbg.h"
 
 int ndfo_recv_llseek(struct netdev_data *nddata, struct fo_req *req) {
-    return -1;
+    struct s_fo_llseek *args = req->args;
+
+    if (!nddata->filp->f_op->llseek) {
+        printk(KERN_ERR "ndfo_recv_llseek: operation is NULL\n");
+        return -1;
+    }
+    args->rvalue = nddata->filp->f_op->llseek(nddata->filp,
+                                            args->offset,
+                                            args->whence);
+
+    return 0;
 }
 
 int ndfo_recv_read(struct netdev_data *nddata, struct fo_req *req) {
@@ -20,6 +30,7 @@ int ndfo_recv_read(struct netdev_data *nddata, struct fo_req *req) {
                                             args->size,
                                             args->offset);
 
+    debug("args->rvalue = %zu", args->rvalue);
     return 0;
 }
 
@@ -74,6 +85,7 @@ int ndfo_recv_open(struct netdev_data *nddata, struct fo_req *req) {
         printk(KERN_ERR "ndfo_recv_open_req: err = %d\n", err);
         return -1; /* failure */
     }
+    debug("nddata->filp = %p", nddata->filp);
 
     if (!nddata->filp->f_op) {
         printk(KERN_ERR "ndfo_recv_open_req: no file operations\n");
@@ -86,7 +98,15 @@ int ndfo_recv_open(struct netdev_data *nddata, struct fo_req *req) {
 }
 
 int ndfo_recv_flush(struct netdev_data *nddata, struct fo_req *req) {
-    return -1;
+    struct s_fo_flush *args = req->args;
+
+    if (!nddata->filp->f_op->flush) {
+        printk(KERN_ERR "ndfo_recv_flush: operation is NULL\n");
+        return -1;
+    }
+    args->rvalue = nddata->filp->f_op->flush(nddata->filp, NULL);
+
+    return 0;
 }
 
 int ndfo_recv_release(struct netdev_data *nddata, struct fo_req *req) {
