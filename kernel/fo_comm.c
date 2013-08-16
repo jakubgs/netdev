@@ -145,30 +145,19 @@ int fo_complete(
         return -1; /* failure */
     }
 
-    debug("recv_req->rvalue = %d", recv_req->rvalue);
     req->rvalue = recv_req->rvalue;
     /* give arguments and the payload to waiting file operation */
     if (recv_req->args) {
         memcpy(req->args, recv_req->args, recv_req->size);
     }
     if (recv_req->data) {
-        debug("access_ok = %ld", access_ok(VERIFY_WRITE, req->data, req->size));
-        /* req->data is always in userspace */
-        /* TODO this is not working! */
-        rvalue = copy_to_user(req->data,
-                            recv_req->data,
-                            recv_req->data_size);
-        if (rvalue > 0) {
-            debug("recv_req->data_size = %zu, rvalue = %d",
-                    recv_req->data_size, rvalue);
-            printk(KERN_ERR "fo_complete: failed to copy to user\n");
-            return -1;
-        }
+        memcpy(req->data, recv_req->data, recv_req->data_size);
     }
 
-    debug("completing file operation, seq = %ld", req->seq);
     complete(&req->comp);
-
+    rvalue = 0; /* success */
+err:
+    dev_kfree_skb(skb);
     kfree(recv_req);
     return 0; /* success */
 }
@@ -289,19 +278,10 @@ void * fo_serialize(
     }
     memcpy(data + size, req->args,       req->size);
     size += req->size;
-    if (req->data == NULL) {
-        debug("no data");
+    if (req->data_size == 0) {
         return data;
     }
-    /* req->data is always in user space */
-    size = copy_from_user(data + size, req->data, req->data_size);
-    if (size > 0) {
-        debug("req->data_size = %zu, rvalue = %zu",
-                req->size, size);
-        printk(KERN_ERR "fo_serialize: failed to copy form user\n");
-        kfree(data);
-        return NULL;
-    }
+    memcpy(data + size, req->data,       req->data_size);
 
     return data;
 }
