@@ -1,5 +1,4 @@
 #include <linux/slab.h>
-#include <linux/kthread.h>
 #include <net/netlink.h>
 #include <asm/uaccess.h>
 
@@ -93,13 +92,13 @@ out:
     return rvalue;
 }
 
+/* this function will be executed as a new thread with kthread_run */
 int fo_recv(
-    struct sk_buff *skb)
+    void *data)
 {
+    struct sk_buff *skb = data;
     struct netdev_data *nddata = NULL;
-    struct task_struct *task = NULL;
     struct nlmsghdr *nlh = NULL;
-    void *data = NULL;
     int rvalue = 0; /* success */
 
     nlh = nlmsg_hdr(skb);
@@ -108,34 +107,18 @@ int fo_recv(
     if (IS_ERR(nddata)) {
         printk(KERN_ERR "fo_recv: failed to find device for pid = %d\n",
                 nlh->nlmsg_pid);
-        return -1; /* failure */
+        do_exit(-1); /* failure */
     }
     ndmgm_get(nddata);
 
     if (nddata->dummy) {
         rvalue = fo_complete(nddata, nlh, skb);
     } else {
-        if ((data = kzalloc(sizeof(*data), GFP_KERNEL)) == NULL) {
-            printk(KERN_ERR "fo_recv: failed to allocate data\n");
-            rvalue = -1; /* failure */
-            goto err;
-        }
-        /* when fo_recv returns netlink_recv will try to free the skb */
-        data = skb_copy(skb, GFP_KERNEL); /* we want to modify it */
-
-        /* crate a new thread since we want to return control to the
-         * server process so it doesn't wait needlesly */
-        task = kthread_run(&fo_execute, (void*)data, "fo_execute");
-        debug("task started!");
-        if (IS_ERR(task)) {
-            printk("fo_recv: failed to create thread for file operation, error = %ld\n", PTR_ERR(task));
-            rvalue = -1; /* failure */
-        }
+        rvalue = fo_execute(nddata, nlh, skb);
     }
 
-err:
     ndmgm_put(nddata);
-    return rvalue;
+    do_exit(0);
 }
 
 int fo_complete(
@@ -190,14 +173,13 @@ int fo_complete(
     return 0; /* success */
 }
 
-/* this function will be executed as a new thread with kthread_run */
 int fo_execute(
-    void *data)
+    struct netdev_data *nddata,
+    struct nlmsghdr *nlh,
+    struct sk_buff *skb)
 {
     int (*fofun)(struct netdev_data*, struct fo_req*) = NULL;
-    struct sk_buff *skb = data, *skbtmp;
-    struct netdev_data *nddata = NULL;
-    struct nlmsghdr *nlh = NULL;
+    struct sk_buff *skbtmp = NULL;
     struct fo_req *req = NULL;
     void *buff = NULL;
     size_t bufflen = 0;
@@ -213,8 +195,6 @@ int fo_execute(
         goto err;
     }
     ndmgm_get(nddata);
-
-    debug("nlh->nlmsg_len = %d", nlh->nlmsg_len);
 
     req = fo_deserialize(NLMSG_DATA(nlh));
     if (!req) {
@@ -247,31 +227,29 @@ int fo_execute(
         printk(KERN_ERR "fo_execute: failed to serialize req\n");
         goto err;
     }
-    debug("bufflen = %zu", bufflen);
 
     if (bufflen <= nlmsg_len(nlh)) {
-        debug("buffer will fit");
         memcpy(nlmsg_data(nlh), buff, bufflen);
     } else {
-        debug("buffer won't fit!");
-        skbtmp = skb;
         /* expand skb and put in data, possibly split into parts */
-        skb = netlink_pack_skb(nlh, buff, bufflen);
+        skbtmp = netlink_pack_skb(nlh, buff, bufflen);
         if (!skb) {
             printk(KERN_ERR "fo_execute: failed to put data into skb\n");
             goto err;
         }
-        dev_kfree_skb(skbtmp);
+        dev_kfree_skb(skb);
+        skb = skbtmp;
     }
 
     rvalue = 0; /* success */
 err:
+    schedule(); /* necessary to make sure netlink_recv sends ACK */
     /* rvalue is -1 so sending it back untouched will mean failure */
     netlink_send_skb(nddata, skb);
     ndmgm_put(nddata);
     kfree(req);
     kfree(buff);
-    do_exit(rvalue);
+    return rvalue;
 }
 
 /* file operation structure:
