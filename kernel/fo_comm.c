@@ -57,7 +57,6 @@ int fo_send(
         rvalue = -ENODATA;
         goto out;
     }
-    debug("bufflen = %zu", bufflen);
 
     if (!(req->seq = ndmgm_incseq(nddata))) {
         printk(KERN_ERR "fo_send: failed to increment curseq\n");
