@@ -1,6 +1,8 @@
 #include <linux/netlink.h>  /* for netlink sockets */
 #include <linux/module.h>
 #include <net/sock.h>
+#include <linux/kthread.h> /* task_struct, kthread_run */
+#include <linux/ktime.h> /* getnstimeofday */
 
 #include "netlink.h"
 #include "netdevmgm.h"
@@ -8,6 +10,16 @@
 #include "dbg.h"
 
 struct sock *nl_sk = NULL;
+
+void prnttime(void) {
+    struct timespec ts;
+
+    getnstimeofday(&ts);
+    
+    printk(KERN_DEBUG "%pS - TIME: sec %ld, nsec %ld\n",
+            __builtin_return_address(0),
+            ts.tv_sec, ts.tv_nsec);
+}
 
 void netlink_recv(struct sk_buff *skb)
 {
@@ -68,8 +80,10 @@ void netlink_recv(struct sk_buff *skb)
 
     /* if error or if this message says it wants a response */
     if ( err || (nlh->nlmsg_flags & NLM_F_ACK )) {
-        debug("sending ACK, err = %d", err);
+        prnttime();
         netlink_ack(skb, nlh, err); /* err should be 0 when no error */
+        prnttime();
+        debug("SENT ACK, err = %d", err);
     } else {
         /* if we don't send ack we have to free sk_buff */
         debug("not sending ACK");
@@ -157,7 +171,9 @@ int netlink_send_skb(
     debug("skb->len = %d", skb->len);
 
     /* send messsage,nlmsg_unicast will take care of freeing skb */
+    prnttime();
     rvalue = nlmsg_unicast(nl_sk, skb, nddata->nlpid);
+    prnttime();
 
     /* TODO get confirmation of delivery */
     debug("rvalue = %d", rvalue);
