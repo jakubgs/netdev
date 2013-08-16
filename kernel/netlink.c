@@ -136,6 +136,7 @@ int netlink_send(
 
     debug("nlh->nlmsg_len = %d", nlh->nlmsg_len);
 
+    NETLINK_CB(skb).portid = nddata->nlpid;
     NETLINK_CB(skb).dst_group = 0; /* not in mcast group */
 
     if (buff) { /* possible to send message without payload */
@@ -175,6 +176,8 @@ int netlink_send_skb(
             nddata->nlpid,
             nlmsg_hdr(skb)->nlmsg_len);
     debug("skb->len = %d", skb->len);
+
+    NETLINK_CB(skb).portid = nddata->nlpid;
 
     /* send messsage,nlmsg_unicast will take care of freeing skb */
     prnttime();
