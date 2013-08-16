@@ -47,8 +47,6 @@ int fo_send(
     req->data = data;
     req->data_size = data_size;
     init_completion(&req->comp);
-    debug("req->size = %zu", req->size);
-    debug("req->data_size = %zu", req->data_size);
 
     /* add the req to a queue of requests */
     ndmgm_foreq_add(nddata, req);
@@ -128,21 +126,18 @@ int fo_complete(
 {
     struct fo_req *req = NULL;
     struct fo_req *recv_req = NULL;
-    int rvalue = 0;
+    int rvalue = -1; /* failure */
 
     req = ndmgm_foreq_find(nddata, nlh->nlmsg_seq);
     if (!req) {
         printk(KERN_ERR "fo_complete: failed to obtain fo request\n");
-        return -1; /* failure */
+        goto err;
     }
-
-    debug("nlh->nlmsg_len = %d", nlh->nlmsg_len);
-    debug("payload size = %d", nlmsg_len(nlh));
 
     recv_req = fo_deserialize(NLMSG_DATA(nlh));
     if (!recv_req) {
         printk(KERN_ERR "fo_complete: failed to deserialize req\n");
-        return -1; /* failure */
+        goto err;
     }
 
     req->rvalue = recv_req->rvalue;
@@ -159,7 +154,7 @@ int fo_complete(
 err:
     dev_kfree_skb(skb);
     kfree(recv_req);
-    return 0; /* success */
+    return rvalue;
 }
 
 int fo_execute(
@@ -273,7 +268,6 @@ void * fo_serialize(
     memcpy(data + size, &req->rvalue,    sizeof(req->rvalue));
     size += sizeof(req->rvalue);
     if (req->args == NULL) {
-        debug("no args");
         return data;
     }
     memcpy(data + size, req->args,       req->size);
@@ -305,7 +299,6 @@ struct fo_req * fo_deserialize(
     size += sizeof(req->data_size);
     memcpy(&req->rvalue,    data + size, sizeof(req->rvalue));
     if (req->size == 0) {
-        debug("no args");
         return req;
     }
     size += sizeof(req->rvalue);
@@ -316,7 +309,6 @@ struct fo_req * fo_deserialize(
     }
     memcpy(req->args,       data + size, req->size);
     if (req->data_size == 0) {
-        debug("no data");
         return req;
     }
     size += req->size;
