@@ -26,9 +26,9 @@ struct fo_req {
  * a buffer of certian size to the loop sending operations whtough netlink
  * to the server process */
 int fo_send(short msgtype, struct netdev_data *nddata, void *args, size_t size, void *data, size_t data_size);
-int fo_recv(struct sk_buff *skb);
+int fo_recv(void *data);
 int fo_complete(struct netdev_data *nddata, struct nlmsghdr *nlh, struct sk_buff *skb);
-int fo_execute(void *data);
+int fo_execute(struct netdev_data *nddata, struct nlmsghdr *nlh, struct sk_buff *skb);
 void * fo_serialize(struct fo_req *req, size_t *bufflen);
 struct fo_req * fo_deserialize(void *data);
 
