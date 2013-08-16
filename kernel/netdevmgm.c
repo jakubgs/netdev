@@ -61,6 +61,7 @@ struct netdev_data * ndmgm_alloc_data(
 
     sprintf(nddata->devname, "/dev/%s%d", name, netdev_count);
     init_rwsem(&nddata->sem);
+    spin_lock_init(&nddata->nllock);
     atomic_set(&nddata->curseq, 0);
     nddata->nlpid = nlpid;
     nddata->active = true;
@@ -253,6 +254,7 @@ int ndmgm_create_server(
 
     memcpy(nddata->devname, name, strlen(name)+1);
     init_rwsem(&nddata->sem);
+    spin_lock_init(&nddata->nllock);
     atomic_set(&nddata->curseq, 0);
     nddata->nlpid = nlpid;
     nddata->active = true;
