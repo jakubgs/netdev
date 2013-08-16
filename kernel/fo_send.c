@@ -29,11 +29,20 @@ ssize_t ndfo_send_read(struct file *filp, char __user *data, size_t size, loff_t
 {
     ssize_t rvalue = 0;
     struct s_fo_read args = {
-        .data = data,
         .size = size,
         .offset = offset,
         .rvalue = -EIO
     };
+    debug("size = %zu", size);
+    if (size >= NETDEV_MESSAGE_LIMIT) {
+        printk(KERN_ERR "ndfo_send_read: buffor too big for message\n");
+        return -EINVAL;
+    }
+    args.data = kmalloc(size, GFP_KERNEL);
+    if (!args.data) {
+        printk(KERN_ERR "ndfo_send_read: failed to allocate args.data\n");
+        return -ENOMEM;
+    }
 
     rvalue = fo_send(MSGT_FO_READ,
                     filp->private_data,
