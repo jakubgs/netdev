@@ -7,7 +7,23 @@
 /* functions for sending and receiving file operations */
 loff_t ndfo_send_llseek(struct file *filp, loff_t offset, int whence)
 {
-    return -EIO;
+    loff_t rvalue = 0;
+    struct s_fo_llseek args = {
+        .offset = offset,
+        .whence = whence,
+        .rvalue = -EIO
+    };
+
+    rvalue = fo_send(MSGT_FO_LLSEEK,
+                    filp->private_data,
+                    &args, sizeof(args),
+                    NULL, 0);
+
+    if (rvalue < 0) {
+        debug("rvalue = %lld", rvalue);
+        return rvalue;
+    }
+    return args.rvalue;
 }
 ssize_t ndfo_send_read(struct file *filp, char __user *data, size_t size, loff_t *offset)
 {
