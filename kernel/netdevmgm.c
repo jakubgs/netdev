@@ -1,5 +1,5 @@
 #include <linux/slab.h>     /* kmalloc, kzalloc, kfree and so on */
-#include <linux/device.h> 
+#include <linux/device.h>
 
 #include "netdevmgm.h"
 #include "fo.h"
@@ -163,7 +163,7 @@ int ndmgm_incseq(struct netdev_data *nddata)
 {
     int rvalue;
     atomic_inc(&nddata->curseq);
-    rvalue = atomic_read(&nddata->users);
+    rvalue = atomic_read(&nddata->curseq);
     debug("curseq = %d", rvalue);
     return rvalue;
 }
@@ -274,7 +274,7 @@ int ndmgm_find_destroy(
     int nlpid)
 {
     struct netdev_data *nddata = NULL;
-    
+
     nddata = ndmgm_find(nlpid);
     if (!nddata) {
         printk(KERN_ERR "ndmgm_find_destroy: no such device\n");
@@ -300,7 +300,7 @@ int ndmgm_destroy(
         printk(KERN_ERR "ndmgm_destroy: nddata is NULL\n");
         return 1; /* failure */
     }
-    
+
     if (nddata->dummy == true) {
         rvalue = ndmgm_destroy_dummy(nddata);
     } else if (nddata->dummy == false) {
