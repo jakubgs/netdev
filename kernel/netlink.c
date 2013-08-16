@@ -37,11 +37,10 @@ void netlink_recv(struct sk_buff *skb)
     debug("msg type: %d, from pid: %d, msg size: %d",
             msgtype, pid, nlh->nlmsg_len);
     if ( pid == 0 ) {
-        printk(KERN_ERR "netlink_recv: received message from kernel, pid: %d\n", pid);
+        printk(KERN_ERR "netlink_recv: message from kernel");
         return;
     }
 
-    /* if msgtype is a netdev control message */
     if (msgtype >= MSGT_CONTROL_START && msgtype < MSGT_CONTROL_END) {
         switch (msgtype) {
         case MSGT_CONTROL_ECHO:
@@ -70,7 +69,6 @@ void netlink_recv(struct sk_buff *skb)
                     msgtype);
             break;
         }
-    /* if it's not a control message it has to be a file operation */
     } else if ( msgtype > MSGT_FO_START && msgtype < MSGT_FO_END ) {
         debug("file opration message");
         data = skb_copy(skb, GFP_KERNEL);/* we will use this skb for ACK*/
@@ -83,8 +81,7 @@ void netlink_recv(struct sk_buff *skb)
             err = PTR_ERR(task); /* failure */
         }
     } else {
-        debug("unknown message type: %d",
-                            msgtype);
+        debug("unknown message type: %d", msgtype);
     }
 
     /* if error or if this message says it wants a response */
