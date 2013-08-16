@@ -6,6 +6,7 @@
 #include "netdevmgm.h"
 #include "fo.h"
 
+void prnttime(void);
 int netlink_echo(int pid, int seq, char *msg);
 void netlink_recv(struct sk_buff *skb);
 int netlink_create_dummy(int pid, int seq, char *buff, size_t bsize);
