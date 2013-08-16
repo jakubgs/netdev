@@ -24,7 +24,9 @@ void prnttime(void) {
 void netlink_recv(struct sk_buff *skb)
 {
     struct nlmsghdr *nlh;
+    struct task_struct *task = NULL;
     int pid, msgtype, seq, err = 0;
+    void *data;
 
     nlh = nlmsg_hdr(skb);
 
@@ -71,8 +73,15 @@ void netlink_recv(struct sk_buff *skb)
     /* if it's not a control message it has to be a file operation */
     } else if ( msgtype > MSGT_FO_START && msgtype < MSGT_FO_END ) {
         debug("file opration message");
-        err = fo_recv(skb);
-    /* otherwise we don't know what this message type is */
+        data = skb_copy(skb, GFP_KERNEL);/* we will use this skb for ACK*/
+        /* crate a new thread so server doesn't wait for ACK */
+        task = kthread_run(&fo_recv, data, "fo_recv");
+        if (IS_ERR(task)) {
+            printk(KERN_ERR
+                    "fo_recv: failed to create thread, error = %ld\n",
+                    PTR_ERR(task));
+            err = PTR_ERR(task); /* failure */
+        }
     } else {
         debug("unknown message type: %d",
                             msgtype);
