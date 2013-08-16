@@ -165,7 +165,6 @@ int ndmgm_incseq(struct netdev_data *nddata)
     int rvalue;
     atomic_inc(&nddata->curseq);
     rvalue = atomic_read(&nddata->curseq);
-    debug("curseq = %d", rvalue);
     return rvalue;
 }
 
