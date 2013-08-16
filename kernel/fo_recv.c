@@ -30,7 +30,6 @@ int ndfo_recv_read(struct netdev_data *nddata, struct fo_req *req) {
                                             args->size,
                                             args->offset);
 
-    debug("args->rvalue = %zu", args->rvalue);
     return 0;
 }
 
@@ -79,13 +78,11 @@ int ndfo_recv_open(struct netdev_data *nddata, struct fo_req *req) {
 
     nddata->filp = filp_open(nddata->devname, flags, mode);
 
-    debug("filp_open executed");
     if (IS_ERR(nddata->filp)) {
         err = PTR_ERR(nddata->filp);
         printk(KERN_ERR "ndfo_recv_open_req: err = %d\n", err);
         return -1; /* failure */
     }
-    debug("nddata->filp = %p", nddata->filp);
 
     if (!nddata->filp->f_op) {
         printk(KERN_ERR "ndfo_recv_open_req: no file operations\n");
@@ -93,7 +90,6 @@ int ndfo_recv_open(struct netdev_data *nddata, struct fo_req *req) {
     }
 
     args->rvalue = 0;
-    debug("success");
     return 0; /* success */
 }
 
