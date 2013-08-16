@@ -289,10 +289,6 @@ int recvall(int conn_fd, struct msghdr *msgh, int size) {
         msgh->msg_iov->iov_len = bytes;
     } while (bytes < size);
 
-    if (msgh->msg_flags == MSG_TRUNC) {
-        printf("recvall: message truncated!\n");
-    }
-
     return bytes; /* success */
 }
 
