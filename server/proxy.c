@@ -171,7 +171,7 @@ int proxy_loop(struct proxy_dev *pdev)
         maxfd = max(maxfd, pdev->us_fd[0]);
         maxfd++; /* this is a count of how far the sockets go */
 
-        printf("proxy_loop: back to waiting\n");
+        printf("proxy_loop: back to select\n");
         if ((nready = select(maxfd, /* max number of file descriptors */
                             &rset,  /* read file descriptors */
                             NULL,   /* no write fd */
@@ -182,7 +182,6 @@ int proxy_loop(struct proxy_dev *pdev)
             debug("errno = %d", errno);
             return -1; /* failure */
         }
-        printf("proxy_loop: one of data sources is ready!\n");
 
         if (FD_ISSET(pdev->us_fd[0], &rset)) {
             printf("proxy_loop: unix socket data!\n");
