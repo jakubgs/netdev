@@ -18,7 +18,7 @@ struct s_fo_read {
     ssize_t rvalue;
 };
 struct s_fo_write {
-    const char __user *data;
+    char __user *data;
     size_t size;
     loff_t *offset;
     ssize_t rvalue;
@@ -60,11 +60,9 @@ struct s_fo_open {
     int rvalue;
 };
 struct s_fo_flush {
-    fl_owner_t id;
     int rvalue;
 };
 struct s_fo_release {
-    struct inode *inode;
     int rvalue;
 };
 struct s_fo_fsync {
