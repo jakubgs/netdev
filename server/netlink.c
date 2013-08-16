@@ -63,9 +63,8 @@ int netlink_send(
         return -1; /* failure */
     }
 
-    debug("msgtype = %d, size = %d", nlh->nlmsg_type, nlh->nlmsg_len);
-    debug("pid = %d", nlh->nlmsg_pid);
-    debug("seq = %d", nlh->nlmsg_seq);
+    debug("msgtype = %d, pid = %d, size = %d",
+            nlh->nlmsg_type, nlh->nlmsg_pid, nlh->nlmsg_len);
 
     /* netlink header is our payload */
     iov.iov_base = (void *)nlh;
@@ -123,9 +122,7 @@ int netlink_send_nlh(
 {
     struct nlmsgerr *msgerr = NULL;
     nlh->nlmsg_pid = pdev->pid;
-    debug("nlh->nlmsg_pid = %d", nlh->nlmsg_pid);
 
-    debug("sending message to kernel");
     /* send everything */
     if (netlink_send(pdev, nlh) == -1) {
         printf("netlink_send_nlh: failed to send message\n");
@@ -143,8 +140,6 @@ int netlink_send_nlh(
         if (msgerr->error != 0) {
             debug("delivery failure, msgerr->error = %d", msgerr->error);
             return -1; /* failure */
-        } else {
-            debug("delivery success!");
         }
     } else {
         printf("netlink_send: next message was not confirmation!\n");
@@ -170,7 +165,6 @@ struct nlmsghdr * netlink_recv(
     msgh.msg_iovlen = 1;
     msgh.msg_flags = MSG_PEEK; /* first we need the full msg size */
 
-    debug("peeking at header bytes = %zu", bufflen);
     /* the minimum is the size of the nlmsghdr alone */
     bufflen = recvall(pdev->nl_fd, &msgh, bufflen);
     if (bufflen == -1) {
@@ -179,9 +173,8 @@ struct nlmsghdr * netlink_recv(
     }
 
     nlh = buffer;
-    debug("msgtype = %d, size = %d", nlh->nlmsg_type, nlh->nlmsg_len);
-    debug("pid = %d", nlh->nlmsg_pid);
-    debug("seq = %d", nlh->nlmsg_seq);
+    debug("msgtype = %d, pid = %d, size = %d",
+            nlh->nlmsg_type, nlh->nlmsg_pid, nlh->nlmsg_len);
 
     /* increase the buffer size if needbe */
     bufflen = nlh->nlmsg_len;
@@ -191,7 +184,6 @@ struct nlmsghdr * netlink_recv(
     msgh.msg_flags = 0; /* get rid of MSG_PEEK */
 
     /* get the rest of message */
-    debug("receiving full message bytes = %zu", bufflen);
     bufflen = recvall(pdev->nl_fd, &msgh, bufflen);
     if (bufflen == -1) {
         printf("netlink_recv: failed to read message\n");
