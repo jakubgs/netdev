@@ -33,7 +33,6 @@ ssize_t ndfo_send_read(struct file *filp, char __user *data, size_t size, loff_t
         .offset = offset,
         .rvalue = -EIO
     };
-    debug("size = %zu", size);
     if (size >= NETDEV_MESSAGE_LIMIT) {
         printk(KERN_ERR "ndfo_send_read: buffor too big for message\n");
         return -EINVAL;
@@ -69,7 +68,6 @@ ssize_t ndfo_send_write(struct file *filp, const char __user *data, size_t size,
         .offset = offset,
         .rvalue = -EIO
     };
-    debug("size = %zu", size);
     if (size >= NETDEV_MESSAGE_LIMIT) {
         printk(KERN_ERR "ndfo_send_write: buffor too big for message\n");
         return -EINVAL;
@@ -140,7 +138,6 @@ int ndfo_send_open(struct inode *inode, struct file *filp)
         debug("rvalue = %d", rvalue);
         return rvalue;
     }
-    debug("args.rvalue = %d", args.rvalue);
     return args.rvalue;
 }
 int ndfo_send_flush(struct file *filp, fl_owner_t id)
@@ -159,7 +156,6 @@ int ndfo_send_flush(struct file *filp, fl_owner_t id)
         debug("rvalue = %d", rvalue);
         return rvalue;
     }
-    debug("args.rvalue = %d", args.rvalue);
     return args.rvalue;
 }
 int ndfo_send_release(struct inode *a, struct file *filp)
@@ -177,7 +173,6 @@ int ndfo_send_release(struct inode *a, struct file *filp)
         debug("rvalue = %d", rvalue);
         return rvalue;
     }
-    debug("args.rvalue = %d", args.rvalue);
     return args.rvalue;
 }
 int ndfo_send_fsync(struct file *filp, loff_t b, loff_t offset, int d)
