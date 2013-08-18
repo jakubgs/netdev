@@ -36,12 +36,15 @@ int ndfo_recv_read(struct netdev_data *nddata, struct fo_req *req) {
 int ndfo_recv_write(struct netdev_data *nddata, struct fo_req *req) {
     struct s_fo_write *args = req->args;
 
-    req->data_size = args->size;
-
     args->rvalue = nddata->filp->f_op->write(nddata->filp,
                                             req->data,
                                             args->size,
                                             args->offset);
+
+    /* don't send written data back */
+    kfree(req->data);
+    req->data = NULL;
+    req->data_size = 0;
 
     return 0;
 }
