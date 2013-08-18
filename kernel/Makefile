@@ -9,7 +9,7 @@ ccflags-y 	:= -O ${WARN} ${DEBUG} ${INCLUDE}
 # kernel build system and can use its language.
 ifneq (${KERNELRELEASE},)
     obj-m := ${TARGET}.o
-	netdev-objs := fo_send.o fo_recv.o fo_comm.o fo.o netdevmgm.o netlink.o main.o
+	netdev-objs := fo_access.o fo_send.o fo_recv.o fo_comm.o fo.o netdevmgm.o netlink.o main.o
 # Otherwise we were called directly from the command line.
 # Invoke the kernel build system.
 else
