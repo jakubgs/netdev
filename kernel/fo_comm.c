@@ -235,11 +235,12 @@ err:
 }
 
 /* file operation structure:
- * 0 - size_t - size of args structure
- * 1 - size_t - size of data/payload
- * 2 - int    - return value of operation
- * 3 - args   - struct with fo args
- * 4 - data   - payload
+ * 0 - int    - access ID
+ * 1 - int    - return value of operation
+ * 2 - size_t - size of args structure
+ * 3 - size_t - size of data/payload
+ * 4 - args   - struct with fo args
+ * 5 - data   - payload
  */
 void * fo_serialize(
     struct fo_req *req,
@@ -247,9 +248,10 @@ void * fo_serialize(
 {
     void *data = NULL;
     size_t size = 0;
-    *bufflen =  sizeof(req->size) +
-                sizeof(req->data_size) +
+    *bufflen =  sizeof(req->access_id) +
                 sizeof(req->rvalue) +
+                sizeof(req->size) +
+                sizeof(req->data_size) +
                 req->size +
                 req->data_size;
 
@@ -259,12 +261,14 @@ void * fo_serialize(
         return NULL; /* failure */
     }
 
+    memcpy(data + size, &req->access_id, sizeof(req->access_id));
+    size += sizeof(req->access_id);
+    memcpy(data + size, &req->rvalue,    sizeof(req->rvalue));
+    size += sizeof(req->rvalue);
     memcpy(data + size, &req->size,      sizeof(req->size));
     size += sizeof(req->size);
     memcpy(data + size, &req->data_size, sizeof(req->data_size));
     size += sizeof(req->data_size);
-    memcpy(data + size, &req->rvalue,    sizeof(req->rvalue));
-    size += sizeof(req->rvalue);
     if (req->args == NULL) {
         return data;
     }
@@ -274,6 +278,7 @@ void * fo_serialize(
         return data;
     }
     memcpy(data + size, req->data,       req->data_size);
+
 
     return data;
 }
@@ -293,15 +298,17 @@ struct fo_req * fo_deserialize_toreq(
     }
 
     /* get all the data */
+    memcpy(&req->access_id, data + size, sizeof(req->access_id));
+    size += sizeof(req->access_id);
+    memcpy(&req->rvalue,    data + size, sizeof(req->rvalue));
+    size += sizeof(req->rvalue);
     memcpy(&req->size,      data + size, sizeof(req->size));
     size += sizeof(req->size);
     memcpy(&req->data_size, data + size, sizeof(req->data_size));
-    size += sizeof(req->data_size);
-    memcpy(&req->rvalue,    data + size, sizeof(req->rvalue));
     if (req->size == 0) {
         return req;
     }
-    size += sizeof(req->rvalue);
+    size += sizeof(req->data_size);
     if (!req->args) {
         req->args = kzalloc(req->size, GFP_KERNEL);
         if (!req->args) {
@@ -339,15 +346,17 @@ struct fo_req * fo_deserialize(
     }
 
     /* get all the data */
+    memcpy(&req->access_id, data + size, sizeof(req->access_id));
+    size += sizeof(req->access_id);
+    memcpy(&req->rvalue,    data + size, sizeof(req->rvalue));
+    size += sizeof(req->rvalue);
     memcpy(&req->size,      data + size, sizeof(req->size));
     size += sizeof(req->size);
     memcpy(&req->data_size, data + size, sizeof(req->data_size));
-    size += sizeof(req->data_size);
-    memcpy(&req->rvalue,    data + size, sizeof(req->rvalue));
     if (req->size == 0) {
         return req;
     }
-    size += sizeof(req->rvalue);
+    size += sizeof(req->data_size);
     req->args = kzalloc(req->size, GFP_KERNEL);
     if (!req->args) {
         printk(KERN_ERR "fo_deserialize: failed to allocate args\n");
