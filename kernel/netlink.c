@@ -16,7 +16,7 @@ void prnttime(void) {
 
     getnstimeofday(&ts);
 
-    printk(KERN_DEBUG "%pS - TIME: sec %ld, nsec %ld\n",
+    printk(KERN_DEBUG " -- %pS - TIME: sec %ld, nsec %ld\n",
             __builtin_return_address(0),
             ts.tv_sec, ts.tv_nsec);
 }
@@ -96,10 +96,7 @@ void netlink_recv(struct sk_buff *skb)
     if ( err || (nlh->nlmsg_flags & NLM_F_ACK )) {
         /* send messsage,nlmsg_unicast will take care of freeing skb */
         netlink_ack(skb, nlh, err); /* err should be 0 when no error */
-    /* send messsage,nlmsg_unicast will take care of freeing skb */
     } else {
-        /* if we don't send ack we have to free sk_buff */
-        debug("not sending ACK");
         dev_kfree_skb(skb);
     }
     /* if nddata is NULL the spinlock is not locked */
@@ -289,14 +286,12 @@ int netlink_init(void)
     nl_cfg.flags = 0;            // TODO
     nl_cfg.input = netlink_recv; // function that will receive data
 
-    printk("netdev: Netlink protocol: %d\n", NETLINK_PROTOCOL);
-
     nl_sk = netlink_kernel_create(&init_net,
                                     NETLINK_PROTOCOL,
                                     &nl_cfg);
 
     if(!nl_sk) {
-        printk(KERN_ALERT "Error creating socket.\n");
+        printk(KERN_ALERT "netlink_init: error creating socket.\n");
         return -1;
     }
 
@@ -306,10 +301,7 @@ int netlink_init(void)
 
 void netlink_exit(void)
 {
-    printk(KERN_INFO "netdev: closing Netlink\n");
-    /* TODO will have to close connections of all devices with the server
-     * process or just close the socket if each device will have it's own
-     * process/socket */
+    printk(KERN_INFO "netlink_exit: closing netlink\n");
 
     /* can only be done once the process releases the socket, otherwise
      * kernel will refuse to unload the module */
