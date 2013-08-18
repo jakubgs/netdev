@@ -176,7 +176,7 @@ struct nlmsghdr * netlink_recv(
 
     nlh = buffer;
     /*
-    debug("msgtype = %d, pid = %d, size = %d",
+    debug("type: %d, pid: %d, size: %d",
             nlh->nlmsg_type, nlh->nlmsg_pid, nlh->nlmsg_len);
     */
 
