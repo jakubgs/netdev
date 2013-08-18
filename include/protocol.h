@@ -9,7 +9,8 @@
 #define NETDEV_PROTOCOL_SUCCESS 0 /* 0 will always mean correct */
 #define NETDEV_PROTOCOL_FAILURE -1 /* 0 will always mean failure */
 
-#define NETDEV_MESSAGE_LIMIT    262144
+/* size limit of messages sent through sendmsg */
+#define NETDEV_MESSAGE_LIMIT    213000
 
 /* let the kernel decide the major number */
 #define NETDEV_MAJOR            0
