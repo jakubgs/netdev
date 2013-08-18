@@ -13,6 +13,8 @@ int conn_send(struct proxy_dev *pdev, struct netdev_header *ndhead) {
     size_t size = sizeof(*ndhead) + ndhead->size;
     void *buff = NULL;
 
+    //debug("sending bytes = %zu", ndhead->size);
+
     buff = malloc(size);
     if (!buff) {
         perror("conn_send(malloc)");
@@ -57,6 +59,8 @@ struct netdev_header * conn_recv(struct proxy_dev *pdev) {
         printf("conn_recv: failed to read message header\n");
         return NULL;
     }
+
+    //debug("paylod size = %zu", ndhead->size);
 
     ndhead->payload = malloc(ndhead->size);
     iov.iov_base = ndhead->payload;
