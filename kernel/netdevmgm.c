@@ -14,7 +14,7 @@ struct netdev_data * ndmgm_alloc_data(
     int nlpid,
     char *name)
 {
-    struct netdev_data *nddata; /* TODO needs to be in a list */
+    struct netdev_data *nddata;
 
     /* check if we have space for another device */
     /* TODO needs a reuse of device numbers from netdev_minors_used array */
@@ -50,7 +50,7 @@ struct netdev_data * ndmgm_alloc_data(
                         0, 0, NULL); /* no alignment, flags or constructor */
     if (!nddata->queue_pool) {
         printk(KERN_ERR "ndmgm_alloc_data: failed to allocate queue_pool\n");
-        goto free_fo_queue;
+        goto free_cdev;
     }
 
     sprintf(nddata->devname, "/dev/%s%d", name, netdev_count);
