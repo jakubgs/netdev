@@ -58,6 +58,7 @@ ssize_t ndfo_send_read(struct file *filp, char __user *data, size_t size, loff_t
         printk(KERN_ERR "ndfo_send_read: failed to copy to user\n");
         return -1;
     }
+    kfree(args.data);
     return args.rvalue;
 }
 ssize_t ndfo_send_write(struct file *filp, const char __user *data, size_t size, loff_t *offset)
@@ -156,23 +157,32 @@ int ndfo_send_mmap(struct file *filp, struct vm_area_struct *b)
 int ndfo_send_open(struct inode *inode, struct file *filp)
 {
     int rvalue = 0;
-    struct netdev_data *nddata;
+    struct netdev_data *nddata = NULL;
+    struct fo_access *acc;
     struct s_fo_open args = {
         .inode = inode,
         .rvalue = -EIO
     };
 
-    /* get the device connected with this file */
     nddata = ndmgm_find(netdev_minors_used[MINOR(inode->i_cdev->dev)]);
+    ndmgm_get(nddata);
+
+    /* get the device connected with this file */
+    acc = fo_acc_start(nddata, current->pid);
+    if (!acc) {
+        printk(KERN_ERR "ndfo_send_open: failed to allocate acc\n");
+        return -ENOMEM;
+    }
 
     /* set private data for easy access to netdev_data struct */
-    filp->private_data = (void*)nddata;
+    filp->private_data = (void*)acc;
 
     rvalue = fo_send(MSGT_FO_OPEN,
                     filp->private_data,
                     &args, sizeof(args),
                     NULL, 0);
 
+    ndmgm_put(nddata);
     if (rvalue < 0) {
         debug("rvalue = %d", rvalue);
         return rvalue;
