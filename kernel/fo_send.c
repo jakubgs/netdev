@@ -4,6 +4,8 @@
 #include "protocol.h"
 #include "dbg.h"
 
+#include "netlink.h"
+
 /* functions for sending and receiving file operations */
 loff_t ndfo_send_llseek(struct file *filp, loff_t offset, int whence)
 {
@@ -93,7 +95,7 @@ ssize_t ndfo_send_write(struct file *filp, const char __user *data, size_t size,
     if (rvalue < 0) {
         debug("rvalue = %zu", rvalue);
         return rvalue;
-    } 
+    }
     return args.rvalue;
 }
 size_t ndfo_send_aio_read(struct kiocb *a, const struct iovec *b, unsigned long c, loff_t offset)
@@ -108,13 +110,45 @@ unsigned int ndfo_send_poll(struct file *filp, struct poll_table_struct *wait)
 {
     return -EIO;
 }
-long ndfo_send_unlocked_ioctl(struct file *filp, unsigned int b, unsigned long c)
+long ndfo_send_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-    return -EIO;
+    long rvalue = 0;
+    struct s_fo_unlocked_ioctl args = {
+        .cmd = cmd,
+        .arg = arg,
+        .rvalue = -EIO
+    };
+
+    rvalue = fo_send(MSGT_FO_UNLOCKED_IOCTL,
+                    filp->private_data,
+                    &args, sizeof(args),
+                    NULL, 0);
+
+    if (rvalue < 0) {
+        debug("rvalue = %ld", rvalue);
+        return rvalue;
+    }
+    return args.rvalue;
 }
-long ndfo_send_compat_ioctl(struct file *filp, unsigned int b, unsigned long c)
+long ndfo_send_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-    return -EIO;
+    long rvalue = 0;
+    struct s_fo_compat_ioctl args = {
+        .cmd = cmd,
+        .arg = arg,
+        .rvalue = -EIO
+    };
+
+    rvalue = fo_send(MSGT_FO_COMPAT_IOCTL,
+                    filp->private_data,
+                    &args, sizeof(args),
+                    NULL, 0);
+
+    if (rvalue < 0) {
+        debug("rvalue = %ld", rvalue);
+        return rvalue;
+    }
+    return args.rvalue;
 }
 int ndfo_send_mmap(struct file *filp, struct vm_area_struct *b)
 {
@@ -123,8 +157,7 @@ int ndfo_send_mmap(struct file *filp, struct vm_area_struct *b)
 int ndfo_send_open(struct inode *inode, struct file *filp)
 {
     int rvalue = 0;
-    struct s_fo_open args =
-    {
+    struct s_fo_open args = {
         .inode = inode,
         .rvalue = -EIO
     };
@@ -169,6 +202,7 @@ int ndfo_send_release(struct inode *a, struct file *filp)
                     filp->private_data,
                     &args, sizeof(args),
                     NULL, 0);
+
     if (rvalue < 0) {
         debug("rvalue = %d", rvalue);
         return rvalue;
