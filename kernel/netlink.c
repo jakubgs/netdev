@@ -94,6 +94,7 @@ void netlink_recv(struct sk_buff *skb)
 
     /* if error or if this message says it wants a response */
     if ( err || (nlh->nlmsg_flags & NLM_F_ACK )) {
+        /* send messsage,nlmsg_unicast will take care of freeing skb */
         netlink_ack(skb, nlh, err); /* err should be 0 when no error */
         debug("SENT ACK, err = %d", err);
     } else {
@@ -119,7 +120,6 @@ int netlink_send(
     struct sk_buff *skb;
     int rvalue;
 
-    debug("msg type: %d, pid: %d, size: %zu",
             msgtype, nddata->nlpid, bufflen);
 
     /* allocate space for message header and it's payload */
@@ -178,16 +178,19 @@ int netlink_send_skb(
         return -1;
     }
 
+    /*
     debug("msg type: %d, pid: %d, size: %d",
             nlmsg_hdr(skb)->nlmsg_type,
             nddata->nlpid,
             nlmsg_hdr(skb)->nlmsg_len);
+    */
 
     NETLINK_CB(skb).portid = nddata->nlpid;
 
     spin_lock(&nddata->nllock); /* to make sure ACK is sent first */
     /* send messsage,nlmsg_unicast will take care of freeing skb */
     rvalue = nlmsg_unicast(nl_sk, skb, nddata->nlpid);
+    /* send messsage,nlmsg_unicast will take care of freeing skb */
     spin_unlock(&nddata->nllock);
 
     if(rvalue < 0) {
