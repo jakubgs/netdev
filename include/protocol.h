@@ -17,8 +17,10 @@
 
 /* defines the number which is the power of two which gives the max number
  * of devices this driver will manage and store in the hashtable */
-#define NETDEV_HASHTABLE_SIZE   5
-#define NETDEV_MAX_DEVICES      32 /* 2 to the power of 5(HASHTABLE_SIE) */
+#define NETDEV_HTABLE_DEV_SIZE  5
+#define NETDEV_HTABLE_ACC_SIZE  5
+#define NETDEV_MAX_DEVICES      32 /* 2 to the power of 5(HASHTABLE_SIZE)*/
+#define NETDEV_MAX_OPEN_FILES   32 /* 2 to the power of 5 */
 #define NETDEV_FO_QUEUE_SIZE    64 /* has to be a power of 2 */
 #define NETDEV_REQ_POOL_NAME    "netdev_req_pool" /* for debugging */
 /* defines the default netlink server port */
