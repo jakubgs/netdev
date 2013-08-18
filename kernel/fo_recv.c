@@ -3,29 +3,30 @@
 
 #include "fo_recv.h"
 #include "fo_struct.h"
+#include "fo_access.h"
 #include "dbg.h"
 
-int ndfo_recv_llseek(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_llseek(struct fo_access *acc, struct fo_req *req) {
     struct s_fo_llseek *args = req->args;
 
-    if (!nddata->filp->f_op->llseek) {
+    if (!acc->filp->f_op->llseek) {
         printk(KERN_ERR "ndfo_recv_llseek: operation is NULL\n");
         return -1;
     }
-    args->rvalue = nddata->filp->f_op->llseek(nddata->filp,
+    args->rvalue = acc->filp->f_op->llseek(acc->filp,
                                             args->offset,
                                             args->whence);
 
     return 0;
 }
 
-int ndfo_recv_read(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_read(struct fo_access *acc, struct fo_req *req) {
     struct s_fo_read *args = req->args;
 
     req->data = kzalloc(args->size , GFP_KERNEL);
     req->data_size = args->size;
 
-    args->rvalue = nddata->filp->f_op->read(nddata->filp,
+    args->rvalue = acc->filp->f_op->read(acc->filp,
                                             req->data,
                                             args->size,
                                             args->offset);
@@ -33,10 +34,10 @@ int ndfo_recv_read(struct netdev_data *nddata, struct fo_req *req) {
     return 0;
 }
 
-int ndfo_recv_write(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_write(struct fo_access *acc, struct fo_req *req) {
     struct s_fo_write *args = req->args;
 
-    args->rvalue = nddata->filp->f_op->write(nddata->filp,
+    args->rvalue = acc->filp->f_op->write(acc->filp,
                                             req->data,
                                             args->size,
                                             args->offset);
@@ -49,57 +50,57 @@ int ndfo_recv_write(struct netdev_data *nddata, struct fo_req *req) {
     return 0;
 }
 
-int ndfo_recv_aio_read(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_aio_read(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_aio_write(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_aio_write(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_poll(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_poll(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_unlocked_ioctl(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_unlocked_ioctl(struct fo_access *acc, struct fo_req *req) {
     struct s_fo_unlocked_ioctl *args = req->args;
 
-    args->rvalue = nddata->filp->f_op->unlocked_ioctl(nddata->filp,
+    args->rvalue = acc->filp->f_op->unlocked_ioctl(acc->filp,
                                                       args->cmd,
                                                       args->arg);
 
     return -1;
 }
 
-int ndfo_recv_compat_ioctl(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_compat_ioctl(struct fo_access *acc, struct fo_req *req) {
     struct s_fo_compat_ioctl *args = req->args;
 
-    args->rvalue = nddata->filp->f_op->compat_ioctl(nddata->filp,
+    args->rvalue = acc->filp->f_op->compat_ioctl(acc->filp,
                                                   args->cmd,
                                                   args->arg);
 
     return 0;
 }
 
-int ndfo_recv_mmap(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_mmap(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_open(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_open(struct fo_access *acc, struct fo_req *req) {
     struct s_fo_open *args = req->args;
     int err = 0;
     int flags = O_RDWR | O_LARGEFILE;
     int mode = 0;
 
-    nddata->filp = filp_open(nddata->devname, flags, mode);
+    acc->filp = filp_open(acc->nddata->devname, flags, mode);
 
-    if (IS_ERR(nddata->filp)) {
-        err = PTR_ERR(nddata->filp);
+    if (IS_ERR(acc->filp)) {
+        err = PTR_ERR(acc->filp);
         printk(KERN_ERR "ndfo_recv_open_req: err = %d\n", err);
         return -1; /* failure */
     }
 
-    if (!nddata->filp->f_op) {
+    if (!acc->filp->f_op) {
         printk(KERN_ERR "ndfo_recv_open_req: no file operations\n");
         return -1; /* failure */
     }
@@ -108,79 +109,79 @@ int ndfo_recv_open(struct netdev_data *nddata, struct fo_req *req) {
     return 0; /* success */
 }
 
-int ndfo_recv_flush(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_flush(struct fo_access *acc, struct fo_req *req) {
     struct s_fo_flush *args = req->args;
 
-    if (!nddata->filp->f_op->flush) {
+    if (!acc->filp->f_op->flush) {
         printk(KERN_ERR "ndfo_recv_flush: operation is NULL\n");
         return -1;
     }
-    args->rvalue = nddata->filp->f_op->flush(nddata->filp, NULL);
+    args->rvalue = acc->filp->f_op->flush(acc->filp, NULL);
 
     return 0;
 }
 
-int ndfo_recv_release(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_release(struct fo_access *acc, struct fo_req *req) {
     struct s_fo_release *args = req->args;
 
-    args->rvalue = filp_close(nddata->filp, NULL);
+    args->rvalue = filp_close(acc->filp, NULL);
 
     return 0;
 }
 
-int ndfo_recv_fsync(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_fsync(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_aio_fsync(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_aio_fsync(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_fasync(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_fasync(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_lock(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_lock(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_sendpage(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_sendpage(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_get_unmapped_area(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_get_unmapped_area(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_check_flags(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_check_flags(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_flock(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_flock(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_splice_write(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_splice_write(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_splice_read(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_splice_read(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_setlease(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_setlease(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_fallocate(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_fallocate(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_show_fdinfo(struct netdev_data *nddata, struct fo_req *req) {
+int ndfo_recv_show_fdinfo(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int (*netdev_recv_fops[])(struct netdev_data *, struct fo_req*) = {
+int (*netdev_recv_fops[])(struct fo_access *, struct fo_req*) = {
     ndfo_recv_llseek,
     ndfo_recv_read,
     ndfo_recv_write,
