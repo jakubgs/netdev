@@ -5,7 +5,7 @@
 #include "fo.h"
 #include "dbg.h"
 
-static DEFINE_HASHTABLE(netdev_htable, NETDEV_HASHTABLE_SIZE);
+static DEFINE_HASHTABLE(netdev_htable, NETDEV_HTABLE_DEV_SIZE);
 static struct rw_semaphore netdev_htable_sem;
 unsigned int netdev_count;
 int *netdev_minors_used;
@@ -60,6 +60,7 @@ struct netdev_data * ndmgm_alloc_data(
     }
 
     sprintf(nddata->devname, "/dev/%s%d", name, netdev_count);
+    hash_init(nddata->foacc_htable);
     init_rwsem(&nddata->sem);
     spin_lock_init(&nddata->nllock);
     atomic_set(&nddata->curseq, 0);
@@ -88,77 +89,6 @@ void ndmgm_free_data(
     kfree(nddata);
 }
 
-int ndmgm_free_queue(
-    struct netdev_data *nddata)
-{
-    int size = 0;
-    struct fo_req *req = NULL;
-
-    /* destroy all requests in the queue */
-    while (!kfifo_is_empty(&nddata->fo_queue)) {
-        printk(KERN_ERR "netdev_destroy: queue not emtpy\n");
-        size = kfifo_out(&nddata->fo_queue, &req, sizeof(req));
-        if ( size != sizeof(req) || IS_ERR(req)) {
-            printk(KERN_ERR "netdev_destroy: failed to fetch from queue, size = %d\n", size);
-            return 1; /* failure */
-        }
-
-        req->rvalue = -ENODATA;
-        complete(&req->comp); /* complete all pending file operations */
-    }
-
-    return 0; /* success */
-}
-
-/* find the filo operation request with the correct sequence number */
-struct fo_req * ndmgm_foreq_find(
-    struct netdev_data *nddata,
-    int seq)
-{
-    /* will hold the first element as a stopper */
-    struct fo_req *req = NULL;
-    struct fo_req *tmp = NULL;
-    int size = 0;
-
-    if (down_write_trylock(&nddata->sem)) {
-        while (!kfifo_is_empty(&nddata->fo_queue)) {
-            size = kfifo_out(&nddata->fo_queue, &tmp, sizeof(tmp));
-            if (size < sizeof(tmp) || IS_ERR(tmp)) {
-                printk(KERN_ERR "ndmgm_foreq_find: failed to get queue element\n");
-                tmp = NULL;
-                break;
-            }
-            if (req == NULL) {
-                req = tmp; /* first element */
-            }
-            if (tmp->seq == seq) {
-                break;
-            }
-            /* put the wrong element back into the queue */
-            debug("wrong element, putting it back at the end");
-            kfifo_in(&nddata->fo_queue, &tmp, sizeof(tmp));
-            if (req == tmp) {
-                tmp = NULL;
-                break;
-            }
-        }
-        up_write(&nddata->sem);
-    }
-    return tmp;
-}
-
-int ndmgm_foreq_add(
-    struct netdev_data *nddata,
-    struct fo_req *req)
-{
-    if (down_write_trylock(&nddata->sem)) {
-        kfifo_in(&nddata->fo_queue, &req, sizeof(req));
-        up_write(&nddata->sem);
-        return 0; /* success */
-    }
-    return 1; /* failure */
-}
-
 /* this function safely increases the current sequence number */
 int ndmgm_incseq(struct netdev_data *nddata)
 {
@@ -168,7 +98,28 @@ int ndmgm_incseq(struct netdev_data *nddata)
     return rvalue;
 }
 
-/*  TODO all this shit will HAVE to use semafors if it has to work */
+struct fo_access * ndmgm_find_acc(
+    struct netdev_data *nddata,
+    int access_id)
+{
+    struct fo_access *acc = NULL;
+
+    if (down_read_trylock(&nddata->sem)) {
+        hash_for_each_possible(nddata->foacc_htable,
+                                acc,
+                                hnode,
+                                access_id) {
+            if ( acc->access_id == access_id ) {
+                up_read(&nddata->sem);
+                return acc;
+            }
+        }
+        up_read(&nddata->sem);
+    }
+
+    return NULL;
+}
+
 int ndmgm_create_dummy(
     int nlpid,
     char *name)
@@ -198,10 +149,10 @@ int ndmgm_create_dummy(
     }
 
     nddata->device = device_create(netdev_class,
-                            NULL,              /* no aprent device           */
-                            nddata->cdev->dev, /* major and minor numbers    */
-                            nddata,            /* device data for callback   */
-                            "%s%d",            /* defines name of the device */
+                            NULL,   /* no aprent device           */
+                            nddata->cdev->dev, /* major and minor */
+                            nddata, /* device data for callback   */
+                            "%s%d", /* defines name of the device */
                             name,
                             MINOR(nddata->cdev->dev));
 
@@ -311,18 +262,47 @@ int ndmgm_destroy(
     return rvalue;
 }
 
+int ndmgm_destroy_allacc(
+    struct netdev_data *nddata)
+{
+    struct fo_access *acc = NULL;
+    struct hlist_node *tmp;
+    int i = 0;
+
+    if (down_write_trylock(&netdev_htable_sem)) {
+        hash_for_each_safe(nddata->foacc_htable, i, tmp, acc, hnode) {
+            debug("deleting acc id = %d", acc->access_id);
+            hash_del(&nddata->hnode); /* delete the element from table */
+
+            /* make sure all pending operations are completed */
+            if (fo_acc_free_queue(acc)) {
+                printk(KERN_ERR "ndmgm_destroy_allacc: failed to free queue\n");
+                return 1; /* failure */
+            }
+
+            fo_acc_destroy(acc);
+        }
+        if (!hash_empty(netdev_htable)) {
+            debug("htable not empty yet!");
+        }
+        up_write(&netdev_htable_sem);
+        return 0; /* success */
+    }
+    return 1; /* failure */
+}
+
 int ndmgm_destroy_dummy(
     struct netdev_data *nddata)
 {
     if (down_write_trylock(&nddata->sem)) {
         nddata->active = false;
         netdev_minors_used[MINOR(nddata->cdev->dev)] = 0;
-
-        /* make sure all pending operations are completed */
-        if (ndmgm_free_queue(nddata)) {
-            printk(KERN_ERR "ndmgm_destroy_dummy: failed to free queue\n");
+        
+        if (ndmgm_destroy_allacc(nddata)) {
+            printk(KERN_ERR "ndmgm_destroy_dummy: failed to stop all acc\n");
             return 1; /* failure */
         }
+
         /* should never happen but better test for it */
         if (ndmgm_refs(nddata) > 1) {
             printk(KERN_ERR "ndmgm_destroy_dummy: more than one ref left: %d\n", ndmgm_refs(nddata));
@@ -372,10 +352,8 @@ int ndmgm_end(void)
     debug("cleaning devices");
 
     if (down_write_trylock(&netdev_htable_sem)) {
-        /* needs to be _safe so we can delete elements inside the loop */
         hash_for_each_safe(netdev_htable, i, tmp, nddata, hnode) {
-            debug("deleting dev pid = %d",
-                                nddata->nlpid);
+            debug("deleting dev pid = %d", nddata->nlpid);
             hash_del(&nddata->hnode); /* delete the element from table */
             ndmgm_put(nddata);
 
