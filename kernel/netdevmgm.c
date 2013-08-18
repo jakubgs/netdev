@@ -367,9 +367,9 @@ void ndmgm_prepare(void)
 {
     /* create and array for all drivices which will be indexed with
      * minor numbers of those devices */
-    netdev_minors_used = (int*)kcalloc(NETDEV_MAX_DEVICES,
-                                            sizeof(*netdev_minors_used),
-                                            GFP_KERNEL);
+    netdev_minors_used = kcalloc(NETDEV_MAX_DEVICES,
+                                sizeof(*netdev_minors_used),
+                                GFP_KERNEL);
     /* create the hashtable which will store data about created devices
      * and for easy access through pid */
     hash_init(netdev_htable);
