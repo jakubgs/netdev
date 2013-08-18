@@ -7,11 +7,13 @@
 #include "fo_recv.h"
 #include "dbg.h"
 
-/* used for sending file operations converted by send_req functions to
- * a buffer of certian size to the loop sending operations whtough netlink
- * to the server process */
-/* TODO might require a struct that will also hold the wait queue to unblock waiting
- * send_req function once receiving loop gets the response */
+static void pk(void) {
+    printk(KERN_DEBUG "netdev: file operation from:\"%s\", PID: %d - %pS\n",
+            current->comm,
+            current->pid,
+            __builtin_return_address(0));
+}
+
 int fo_send(
     short msgtype,
     struct netdev_data *nddata,
@@ -25,7 +27,7 @@ int fo_send(
     void *buffer = NULL;
     struct fo_req *req = NULL;
 
-    if (!nddata->active) {
+    //pk(); /* for debugging only */
         return -EBUSY;
     }
 
