@@ -7,6 +7,7 @@
 #include <linux/completion.h>
 
 #include "netdevmgm.h"
+#include "fo_access.h"
 
 struct netdev_data;
 /* file structure for a queue of operations of dummy device, those will have
@@ -14,6 +15,7 @@ struct netdev_data;
 struct fo_req {
     long        seq;        /* for synchronizing netlink messages     */
     short       msgtype;    /* type of file operation                 */
+    int         access_id;  /* identification of opened file */
     void       *args;       /* place for s_fo_OPERATION structures    */
     void       *data;       /* place for fo payload */
     size_t      size;       /* size of the s_fo_OPERATION structure   */
@@ -22,10 +24,10 @@ struct fo_req {
     struct completion comp; /* completion to release once reply arrives */
 };
 
-int fo_send(short msgtype, struct netdev_data *nddata, void *args, size_t size, void *data, size_t data_size);
+int fo_send(short msgtype, struct fo_access *acc, void *args, size_t size, void *data, size_t data_size);
 int fo_recv(void *data);
-int fo_complete(struct netdev_data *nddata, struct nlmsghdr *nlh, struct sk_buff *skb);
-int fo_execute(struct netdev_data *nddata, struct nlmsghdr *nlh, struct sk_buff *skb);
+int fo_complete(struct fo_access *acc, struct nlmsghdr *nlh, struct sk_buff *skb);
+int fo_execute(struct fo_access *acc, struct nlmsghdr *nlh, struct sk_buff *skb);
 void * fo_serialize(struct fo_req *req, size_t *bufflen);
 struct fo_req * fo_deserialize_toreq(struct fo_req *req, void *data);
 struct fo_req * fo_deserialize(void *data);
