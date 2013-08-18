@@ -94,6 +94,7 @@ ssize_t ndfo_send_write(struct file *filp, const char __user *data, size_t size,
         debug("rvalue = %zu", rvalue);
         return rvalue;
     }
+    kfree(args.data);
     return args.rvalue;
 }
 size_t ndfo_send_aio_read(struct kiocb *a, const struct iovec *b, unsigned long c, loff_t offset)
