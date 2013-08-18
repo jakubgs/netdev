@@ -59,11 +59,23 @@ int ndfo_recv_poll(struct netdev_data *nddata, struct fo_req *req) {
 }
 
 int ndfo_recv_unlocked_ioctl(struct netdev_data *nddata, struct fo_req *req) {
+    struct s_fo_unlocked_ioctl *args = req->args;
+
+    args->rvalue = nddata->filp->f_op->unlocked_ioctl(nddata->filp,
+                                                      args->cmd,
+                                                      args->arg);
+
     return -1;
 }
 
 int ndfo_recv_compat_ioctl(struct netdev_data *nddata, struct fo_req *req) {
-    return -1;
+    struct s_fo_compat_ioctl *args = req->args;
+
+    args->rvalue = nddata->filp->f_op->compat_ioctl(nddata->filp,
+                                                  args->cmd,
+                                                  args->arg);
+
+    return 0;
 }
 
 int ndfo_recv_mmap(struct netdev_data *nddata, struct fo_req *req) {
