@@ -26,18 +26,15 @@ void netlink_recv(struct sk_buff *skb)
     struct netdev_data *nddata = NULL;
     struct task_struct *task = NULL;
     struct nlmsghdr *nlh = NULL;
-    int pid, msgtype, seq, err = 0;
+    int pid, msgtype, err = 0;
     void *data;
 
     nlh = nlmsg_hdr(skb);
 
     pid     = nlh->nlmsg_pid;
-    seq     = nlh->nlmsg_seq;
     msgtype = nlh->nlmsg_type;
 
-
-    debug("msg type: %d, pid: %d, size: %d",
-            msgtype, pid, nlh->nlmsg_len);
+    //debug("type: %d, pid: %d, size: %d", msgtype, pid, nlh->nlmsg_len);
     if ( pid == 0 ) {
         printk(KERN_ERR "netlink_recv: message from kernel");
         return;
@@ -46,7 +43,7 @@ void netlink_recv(struct sk_buff *skb)
     if (msgtype >= MSGT_CONTROL_START && msgtype < MSGT_CONTROL_END) {
         switch (msgtype) {
         case MSGT_CONTROL_ECHO:
-            err = netlink_echo(pid, seq, (char*)nlmsg_data(nlh));
+            err = netlink_echo(pid, nlh->nlmsg_seq,(char*)nlmsg_data(nlh));
             break;
         case MSGT_CONTROL_VERSION:
             break;
