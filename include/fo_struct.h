@@ -42,13 +42,13 @@ struct s_dev_fo_poll {
     unsigned long rvalue;
 };
 struct s_fo_unlocked_ioctl {
-    unsigned int b;
-    unsigned long c;
+    unsigned int cmd;
+    unsigned long arg;
     long rvalue;
 };
 struct s_fo_compat_ioctl {
-    unsigned int b;
-    unsigned long c;
+    unsigned int cmd;
+    unsigned long arg;
     long rvalue;
 };
 struct s_fo_mmap {
