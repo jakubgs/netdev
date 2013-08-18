@@ -33,7 +33,6 @@ int fo_send(
     ndmgm_get(nddata);
 
     req = kmem_cache_alloc(nddata->queue_pool, GFP_KERNEL);
-
     if (!req) {
         printk(KERN_ERR "senf_fo: failed to allocate queue_pool\n");
         rvalue = -ENOMEM;
@@ -78,9 +77,7 @@ int fo_send(
     }
 
     /* wait for completion, it will be signaled once a reply is received */
-    debug("STARTING WAIT, seq = %ld", req->seq);
     wait_for_completion(&req->comp);
-    debug("WAIT COMPLETE, seq = %ld", req->seq);
 
     rvalue = req->rvalue;
 out:
@@ -184,9 +181,6 @@ int fo_execute(
         printk(KERN_ERR "fo_execute: failed to deserialize req\n");
         goto err;
     }
-
-    printk(KERN_INFO "fo_execute: executing file operation = %d\n",
-                    nlh->nlmsg_type);
 
     /* get number of file operation for array */
     fonum = nlh->nlmsg_type - (MSGT_FO_START+1);
