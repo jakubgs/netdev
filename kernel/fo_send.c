@@ -4,8 +4,6 @@
 #include "protocol.h"
 #include "dbg.h"
 
-#include "netlink.h"
-
 /* functions for sending and receiving file operations */
 loff_t ndfo_send_llseek(struct file *filp, loff_t offset, int whence)
 {
