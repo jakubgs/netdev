@@ -1,11 +1,9 @@
-#include "fo.h"
-#include <linux/sched.h>    /* access to current->comm and current->pid */
 #include <linux/module.h>
 
-#include "netdevmgm.h"
+#include "fo.h"
 #include "fo_send.h"
 
-/* TODO this struct will have to be generated dynamically based on the 
+/* TODO this struct will have to be generated dynamically based on the
  * operations supported by the device on the other end */
 struct file_operations netdev_fops = {
     .owner             = THIS_MODULE,
