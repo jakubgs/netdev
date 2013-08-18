@@ -5,6 +5,7 @@
 #include "protocol.h"
 #include "netlink.h"
 #include "fo_recv.h"
+#include "fo_access.h"
 #include "dbg.h"
 
 static void pk(void) {
@@ -28,13 +29,15 @@ int fo_send(
     struct fo_req *req = NULL;
 
     //pk(); /* for debugging only */
+
+    if (!acc->nddata->active) {
         return -EBUSY;
     }
 
     /* increment reference counter of netdev_data */
-    ndmgm_get(nddata);
+    ndmgm_get(acc->nddata);
 
-    req = kmem_cache_alloc(nddata->queue_pool, GFP_KERNEL);
+    req = kmem_cache_alloc(acc->nddata->queue_pool, GFP_KERNEL);
     if (!req) {
         printk(KERN_ERR "senf_fo: failed to allocate queue_pool\n");
         rvalue = -ENOMEM;
@@ -43,6 +46,7 @@ int fo_send(
 
     req->rvalue = -1; /* assume failure, server has to change it to 0 */
     req->msgtype = msgtype;
+    req->access_id = acc->access_id;
     req->args = args;
     req->size = size;
     req->data = data;
@@ -50,7 +54,7 @@ int fo_send(
     init_completion(&req->comp);
 
     /* add the req to a queue of requests */
-    ndmgm_foreq_add(nddata, req);
+    fo_acc_foreq_add(acc, req);
 
     buffer = fo_serialize(req, &bufflen);
     if (!buffer) {
@@ -59,13 +63,13 @@ int fo_send(
         goto out;
     }
 
-    if (!(req->seq = ndmgm_incseq(nddata))) {
+    if (!(req->seq = ndmgm_incseq(acc->nddata))) {
         printk(KERN_ERR "fo_send: failed to increment curseq\n");
         rvalue = -EBUSY;
         goto out;
     }
     /* send the file operation request */
-    rvalue = netlink_send(nddata,
+    rvalue = netlink_send(acc->nddata,
                             req->seq,
                             req->msgtype,
                             NLM_F_REQUEST,
@@ -83,8 +87,11 @@ int fo_send(
 
     rvalue = req->rvalue;
 out:
-    kmem_cache_free(nddata->queue_pool, req);
-    ndmgm_put(nddata);
+    kmem_cache_free(acc->nddata->queue_pool, req);
+    ndmgm_put(acc->nddata);
+    if (msgtype == MSGT_FO_RELEASE) {
+        fo_acc_destroy(acc);
+    }
     return rvalue;
 }
 
@@ -94,63 +101,79 @@ int fo_recv(
 {
     struct sk_buff *skb = data;
     struct netdev_data *nddata = NULL;
+    struct fo_access *acc = NULL;
     struct nlmsghdr *nlh = NULL;
+    int msgtype = 0;
     int rvalue = 0; /* success */
+    int pid = 0;
 
     nlh = nlmsg_hdr(skb);
+    msgtype = nlh->nlmsg_type;
 
     nddata = ndmgm_find(nlh->nlmsg_pid);
     if (IS_ERR(nddata)) {
         printk(KERN_ERR "fo_recv: failed to find device for pid = %d\n",
                 nlh->nlmsg_pid);
-        do_exit(-1); /* failure */
+        do_exit(-ENODEV); /* failure */
     }
     ndmgm_get(nddata);
 
+    memcpy(&pid, NLMSG_DATA(nlh), sizeof(pid));
+    acc = ndmgm_find_acc(nddata, pid);
+
+    if (!acc) {
+        if (msgtype != MSGT_FO_OPEN) {
+            printk(KERN_ERR "fo_recv: no opened file for pid = %d\n", pid);
+            do_exit(-ENFILE);
+        }
+        acc = fo_acc_start(nddata, pid);
+        if (!acc) {
+            printk(KERN_ERR "fo_recv: failed to allocate acc\n");
+            do_exit(-ENOMEM);
+        }
+    }
+
     if (nddata->dummy) {
-        rvalue = fo_complete(nddata, nlh, skb);
+        rvalue = fo_complete(acc, nlh, skb);
     } else {
-        rvalue = fo_execute(nddata, nlh, skb);
+        rvalue = fo_execute(acc, nlh, skb);
     }
 
     ndmgm_put(nddata);
-    do_exit(0);
+    do_exit(rvalue);
 }
 
 int fo_complete(
-    struct netdev_data *nddata,
+    struct fo_access *acc,
     struct nlmsghdr *nlh,
     struct sk_buff *skb)
 {
     struct fo_req *req = NULL;
-    struct fo_req *recv_req = NULL;
-    int rvalue = -1; /* failure */
+    //debug("completing, pid = %d, seq = %d", acc->access_id, nlh->nlmsg_seq);
 
-    req = ndmgm_foreq_find(nddata, nlh->nlmsg_seq);
+    /* first element in paylod is access ID */
+    req = fo_acc_foreq_find(acc, nlh->nlmsg_seq);
     if (!req) {
         printk(KERN_ERR "fo_complete: failed to obtain fo request\n");
-        goto err;
+        return -1;
     }
 
     if (!fo_deserialize_toreq(req, NLMSG_DATA(nlh))) {
         printk(KERN_ERR "fo_complete: failed to deserialize req\n");
-        goto err;
+        return -1;
     }
 
     complete(&req->comp);
-    rvalue = 0; /* success */
-err:
-    dev_kfree_skb(skb);
-    kfree(recv_req);
-    return rvalue;
+    dev_kfree_skb(skb); /* fo_execute frees skb by sending unicat */
+    return 0;
 }
 
 int fo_execute(
-    struct netdev_data *nddata,
+    struct fo_access *acc,
     struct nlmsghdr *nlh,
     struct sk_buff *skb)
 {
-    int (*fofun)(struct netdev_data*, struct fo_req*) = NULL;
+    int (*fofun)(struct fo_access*, struct fo_req*) = NULL;
     struct sk_buff *skbtmp = NULL;
     struct fo_req *req = NULL;
     void *buff = NULL;
@@ -158,21 +181,12 @@ int fo_execute(
     int fonum = 0;
     int rvalue = -ENODATA;
 
-    nlh = nlmsg_hdr(skb);
-
-    nddata = ndmgm_find(nlh->nlmsg_pid);
-    if (IS_ERR(nddata)) {
-        printk(KERN_ERR "fo_recv: failed to find device for pid = %d\n",
-                nlh->nlmsg_pid);
-        goto err;
-    }
-    ndmgm_get(nddata);
-
     req = fo_deserialize(NLMSG_DATA(nlh));
     if (!req) {
         printk(KERN_ERR "fo_execute: failed to deserialize req\n");
         goto err;
     }
+    //debug("executing, pid = %d, seq = %d", acc->access_id, nlh->nlmsg_seq);
 
     /* get number of file operation for array */
     fonum = nlh->nlmsg_type - (MSGT_FO_START+1);
@@ -184,7 +198,7 @@ int fo_execute(
     }
 
     /* execute the file operation */
-    req->rvalue = fofun(nddata, req);
+    req->rvalue = fofun(acc, req);
     if (req->rvalue == -1) {
         printk(KERN_ERR "fo_execute: file operation failed\n");
         goto err;
@@ -214,8 +228,7 @@ int fo_execute(
 err:
     schedule(); /* necessary to make sure netlink_recv sends ACK */
     /* rvalue is -1 so sending it back untouched will mean failure */
-    netlink_send_skb(nddata, skb);
-    ndmgm_put(nddata);
+    netlink_send_skb(acc->nddata, skb);
     kfree(req);
     kfree(buff);
     return rvalue;
