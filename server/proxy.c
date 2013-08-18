@@ -159,7 +159,7 @@ int proxy_loop(struct proxy_dev *pdev)
     int maxfd, nready;
     fd_set rset;
 
-    printf("proxy_loop: starting serving connections\n");
+    debug("starting serving connections");
 
     /* Read message from kernel */
     for ( ; ; ) {
@@ -171,7 +171,6 @@ int proxy_loop(struct proxy_dev *pdev)
         maxfd = max(maxfd, pdev->us_fd[0]);
         maxfd++; /* this is a count of how far the sockets go */
 
-        printf("proxy_loop: back to select\n");
         if ((nready = select(maxfd, /* max number of file descriptors */
                             &rset,  /* read file descriptors */
                             NULL,   /* no write fd */
@@ -184,7 +183,6 @@ int proxy_loop(struct proxy_dev *pdev)
         }
 
         if (FD_ISSET(pdev->us_fd[0], &rset)) {
-            printf("proxy_loop: unix socket data!\n");
             /* message from control unix socket */
             if (proxy_control(pdev) == -1) {
                 return -1;
@@ -193,14 +191,12 @@ int proxy_loop(struct proxy_dev *pdev)
         }
 
         if (FD_ISSET(pdev->nl_fd, &rset)) {
-            printf("proxy_loop: netlink socket data!\n");
             if (proxy_handle_netlink(pdev) == -1) {
                 return -1;
             }
         }
 
         if (FD_ISSET(pdev->rm_fd, &rset)) {
-            printf("proxy_loop: remote socket data!\n");
             if (proxy_handle_remote(pdev) == -1) {
                 return -1;
             }
@@ -235,11 +231,11 @@ int proxy_handle_remote(struct proxy_dev *pdev)
     }
 
 
-    debug("ndhead->msgtype = %d", ndhead->msgtype);
     if (ndhead->msgtype > MSGT_FO_START &&
         ndhead->msgtype < MSGT_FO_END) {
-        printf("proxy_handle_remote: FILE OPERATION: %d\n",
+        /*printf("proxy_handle_remote:  FILE OPERATION: %d\n",
                 ndhead->msgtype);
+        */
 
         netlink_send_nlh(pdev, (struct nlmsghdr *)ndhead->payload);
     } else {
@@ -267,8 +263,9 @@ int proxy_handle_netlink(struct proxy_dev *pdev)
 
     if (nlh->nlmsg_type > MSGT_FO_START &&
         nlh->nlmsg_type < MSGT_FO_END) {
-        printf("proxy_handle_netlink: FILE OPERATION: %d\n",
+        /*printf("proxy_handle_netlink: FILE OPERATION: %d\n",
                 nlh->nlmsg_type);
+        */
 
         ndhead = malloc(sizeof(*ndhead));
         if (!ndhead) {
