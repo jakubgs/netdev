@@ -14,7 +14,6 @@ struct netdev_data * ndmgm_alloc_data(
     int nlpid,
     char *name)
 {
-    int err = 0;
     struct netdev_data *nddata; /* TODO needs to be in a list */
 
     /* check if we have space for another device */
@@ -46,11 +45,6 @@ struct netdev_data * ndmgm_alloc_data(
         goto free_nddata;
     }
 
-    if ((err = kfifo_alloc(&nddata->fo_queue, NETDEV_FO_QUEUE_SIZE, GFP_KERNEL))) {
-        printk(KERN_ERR "ndmgm_alloc_data: failed to allocate fo_queue\n");
-        goto free_cdev;
-    }
-
     nddata->queue_pool = kmem_cache_create(NETDEV_REQ_POOL_NAME,
                         sizeof(struct fo_req),
                         0, 0, NULL); /* no alignment, flags or constructor */
@@ -68,8 +62,6 @@ struct netdev_data * ndmgm_alloc_data(
     nddata->active = true;
 
     return nddata;
-free_fo_queue:
-    kfifo_free(&nddata->fo_queue);
 free_cdev:
     kfree(nddata->cdev);
 free_devname:
@@ -83,7 +75,6 @@ void ndmgm_free_data(
     struct netdev_data *nddata)
 {
     kmem_cache_destroy(nddata->queue_pool);
-    kfifo_free(&nddata->fo_queue);
     kfree(nddata->cdev);
     kfree(nddata->devname);
     kfree(nddata);
