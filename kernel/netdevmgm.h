@@ -30,11 +30,9 @@ struct netdev_data {
     struct device *device;
     struct hlist_node hnode; /* to use with hastable */
     struct rw_semaphore sem; /* necessary since threads can use this */
-    struct kfifo fo_queue; /* queue for file operations */
     struct kmem_cache *queue_pool; /* pool of memory for fo_req structs */
-    /* data used only by server */
-    struct file *filp;
-    struct inode *inode;
+    /* hash table for active open files */
+    DECLARE_HASHTABLE(foacc_htable, NETDEV_HTABLE_ACC_SIZE);
 };
 
 struct netdev_data * ndmgm_alloc_data(int nlpid, char *name);
@@ -42,12 +40,11 @@ int ndmgm_create_dummy(int nlpid, char *name);
 int ndmgm_create_server(int nlpid, char *name);
 struct netdev_data * ndmgm_find(int nlpid);
 void ndmgm_free_data(struct netdev_data *nddata);
-int ndmgm_free_queue(struct netdev_data *nddata);
-struct fo_req * ndmgm_foreq_find(struct netdev_data *nddata, int seq);
-int ndmgm_foreq_add(struct netdev_data *nddata, struct fo_req *req);
 int ndmgm_incseq(struct netdev_data *nddata);
+struct fo_access * ndmgm_find_acc(struct netdev_data *nddata, int access_id);
 int ndmgm_find_destroy(int nlpid);
 int ndmgm_destroy(struct netdev_data *nddata);
+int ndmgm_destroy_allacc( struct netdev_data *nddata);
 int ndmgm_destroy_dummy(struct netdev_data *nddata);
 int ndmgm_destroy_server(struct netdev_data *nddata);
 int ndmgm_end(void);
