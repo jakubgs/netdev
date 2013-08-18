@@ -155,10 +155,17 @@ int ndfo_send_mmap(struct file *filp, struct vm_area_struct *b)
 int ndfo_send_open(struct inode *inode, struct file *filp)
 {
     int rvalue = 0;
+    struct netdev_data *nddata;
     struct s_fo_open args = {
         .inode = inode,
         .rvalue = -EIO
     };
+
+    /* get the device connected with this file */
+    nddata = ndmgm_find(netdev_minors_used[MINOR(inode->i_cdev->dev)]);
+
+    /* set private data for easy access to netdev_data struct */
+    filp->private_data = (void*)nddata;
 
     rvalue = fo_send(MSGT_FO_OPEN,
                     filp->private_data,
