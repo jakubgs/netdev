@@ -151,8 +151,10 @@ int netlink_send(
         memcpy(nlmsg_data(nlh) ,buff ,bufflen);
     }
 
+    spin_lock(&nddata->nllock); /* to make sure ACK is sent first */
     /* send messsage,nlmsg_unicast will take care of freeing skb */
     rvalue = nlmsg_unicast(nl_sk, skb, nddata->nlpid);
+    spin_unlock(&nddata->nllock);
 
     /* TODO get confirmation of delivery */
 
