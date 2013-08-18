@@ -75,11 +75,13 @@ void netlink_recv(struct sk_buff *skb)
             printk(KERN_ERR "netlink_recv: failed to find nddata\n");
             return;
         }
-        /* lock to make sure we send ACK first */
-        spin_lock(&nddata->nllock);
 
         /* we will use this skb for ACK*/
         data = skb_copy(skb, GFP_KERNEL);
+
+        /* lock to make sure we send ACK first */
+        spin_lock(&nddata->nllock);
+
         /* crate a new thread so server doesn't wait for ACK */
         task = kthread_run(&fo_recv, data, "fo_recv");
         if (IS_ERR(task)) {
@@ -262,7 +264,7 @@ int netlink_echo(int pid, int seq, char *msg)
     strncpy(nlmsg_data(nlh) ,msg ,msg_size);
 
     /* send messsage, nlmsg_unicast will take care of freeing skb */
-    rvalue = nlmsg_unicast(nl_sk,skb,pid);
+    rvalue = nlmsg_unicast(nl_sk, skb, pid);
 
     if(rvalue<=0) {
         printk(KERN_ERR "netlink: error while replying to process\n");
