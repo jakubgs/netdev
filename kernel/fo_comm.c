@@ -130,19 +130,9 @@ int fo_complete(
         goto err;
     }
 
-    recv_req = fo_deserialize(NLMSG_DATA(nlh));
-    if (!recv_req) {
+    if (!fo_deserialize_toreq(req, NLMSG_DATA(nlh))) {
         printk(KERN_ERR "fo_complete: failed to deserialize req\n");
         goto err;
-    }
-
-    req->rvalue = recv_req->rvalue;
-    /* give arguments and the payload to waiting file operation */
-    if (recv_req->args) {
-        memcpy(req->args, recv_req->args, recv_req->size);
-    }
-    if (recv_req->data) {
-        memcpy(req->data, recv_req->data, recv_req->data_size);
     }
 
     complete(&req->comp);
@@ -271,6 +261,54 @@ void * fo_serialize(
     memcpy(data + size, req->data,       req->data_size);
 
     return data;
+}
+
+struct fo_req * fo_deserialize_toreq(
+    struct fo_req *req,
+    void *data)
+{
+    size_t size = 0;
+
+    if (!req) {
+        req = kzalloc(sizeof(*req), GFP_KERNEL);
+        if (!req) {
+            printk(KERN_ERR "fo_deserialize: failed to allocate req\n");
+            return NULL; /* failure */
+        }
+    }
+
+    /* get all the data */
+    memcpy(&req->size,      data + size, sizeof(req->size));
+    size += sizeof(req->size);
+    memcpy(&req->data_size, data + size, sizeof(req->data_size));
+    size += sizeof(req->data_size);
+    memcpy(&req->rvalue,    data + size, sizeof(req->rvalue));
+    if (req->size == 0) {
+        return req;
+    }
+    size += sizeof(req->rvalue);
+    if (!req->args) {
+        req->args = kzalloc(req->size, GFP_KERNEL);
+        if (!req->args) {
+            printk(KERN_ERR "fo_deserialize: failed to allocate args\n");
+            return NULL;
+        }
+    }
+    memcpy(req->args,       data + size, req->size);
+    if (req->data_size == 0) {
+        return req;
+    }
+    size += req->size;
+    if (!req->data) {
+        req->data = kzalloc(req->data_size, GFP_KERNEL);
+        if (!req->data) {
+            printk(KERN_ERR "fo_deserialize: failed to allocate data\n");
+            return NULL;
+        }
+    }
+    memcpy(req->data,       data + size, req->data_size);
+
+    return req;
 }
 
 struct fo_req * fo_deserialize(
