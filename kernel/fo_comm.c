@@ -17,7 +17,7 @@ static void pk(void) {
 
 int fo_send(
     short msgtype,
-    struct netdev_data *nddata,
+    struct fo_access *acc,
     void *args,
     size_t size,
     void *data,
@@ -235,7 +235,7 @@ err:
 }
 
 /* file operation structure:
- * 0 - int    - access ID
+ * 0 - int    - access ID (HAS TO BE FIRST)
  * 1 - int    - return value of operation
  * 2 - size_t - size of args structure
  * 3 - size_t - size of data/payload
