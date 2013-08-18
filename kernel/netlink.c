@@ -15,7 +15,7 @@ void prnttime(void) {
     struct timespec ts;
 
     getnstimeofday(&ts);
-    
+
     printk(KERN_DEBUG "%pS - TIME: sec %ld, nsec %ld\n",
             __builtin_return_address(0),
             ts.tv_sec, ts.tv_nsec);
@@ -96,7 +96,7 @@ void netlink_recv(struct sk_buff *skb)
     if ( err || (nlh->nlmsg_flags & NLM_F_ACK )) {
         /* send messsage,nlmsg_unicast will take care of freeing skb */
         netlink_ack(skb, nlh, err); /* err should be 0 when no error */
-        debug("SENT ACK, err = %d", err);
+    /* send messsage,nlmsg_unicast will take care of freeing skb */
     } else {
         /* if we don't send ack we have to free sk_buff */
         debug("not sending ACK");
@@ -120,7 +120,7 @@ int netlink_send(
     struct sk_buff *skb;
     int rvalue;
 
-            msgtype, nddata->nlpid, bufflen);
+    //debug("type: %d, pid: %d, size: %zu", msgtype, nddata->nlpid, bufflen);
 
     /* allocate space for message header and it's payload */
     skb = nlmsg_new(bufflen, GFP_KERNEL);
@@ -181,7 +181,7 @@ int netlink_send_skb(
     }
 
     /*
-    debug("msg type: %d, pid: %d, size: %d",
+    debug("type: %d, pid: %d, size: %d",
             nlmsg_hdr(skb)->nlmsg_type,
             nddata->nlpid,
             nlmsg_hdr(skb)->nlmsg_len);
