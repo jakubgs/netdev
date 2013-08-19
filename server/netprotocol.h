@@ -7,7 +7,4 @@ struct netdev_header {
     void *payload;
 };
 
-void* serialise_netdev_header(struct netdev_header *ndhead);
-struct netdev_header* deserialise_netdev_header(void *buffer, size_t size);
-
 #endif
