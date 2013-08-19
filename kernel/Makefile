@@ -2,8 +2,9 @@
 TARGET 		:= netdev
 DEBUG 		:= -g
 WARN   		:= -Wall -Wstrict-prototypes -Wmissing-prototypes
+NOWARN 		:= -Wno-unused-function
 INCLUDE 	:= -I$(src)/../include/ -I$(src)
-ccflags-y 	:= -O ${WARN} ${DEBUG} ${INCLUDE}
+ccflags-y 	:= -O ${WARN} ${NOWARN} ${DEBUG} ${INCLUDE}
 
 # if KERNELRELEASE is defined, we've been invoked from the
 # kernel build system and can use its language.
