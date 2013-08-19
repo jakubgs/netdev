@@ -59,6 +59,17 @@ struct proxy_dev * proxy_alloc_dev(int connfd)
     return pdev;
 }
 
+void proxy_destroy(struct proxy_dev *pdev) {
+    free(pdev->nl_src_addr);
+    free(pdev->nl_dst_addr);
+    free(pdev->rm_addr);
+    free(pdev->us_addr);
+    free(pdev->rm_ipaddr);
+    free(pdev->remote_dev_name);
+    free(pdev->dummy_dev_name);
+    free(pdev);
+}
+
 void proxy_client(struct proxy_dev *pdev)
 {
     pdev->pid = getpid(); /* make sure you have the right pid */
@@ -99,7 +110,7 @@ void proxy_client(struct proxy_dev *pdev)
     }
 
 err:
-    free(pdev);
+    proxy_destroy(pdev);
     return;
 }
 
@@ -148,7 +159,7 @@ void proxy_server(int connfd)
         printf("proxy_server: failed to unregister device!\n");
     }
 
-    free(pdev);
+    proxy_destroy(pdev);
     /* close the socket completely */
     close(connfd);
     return;
