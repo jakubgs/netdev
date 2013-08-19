@@ -65,46 +65,6 @@ free_nddata:
     return NULL;
 }
 
-void ndmgm_free_data(
-    struct netdev_data *nddata)
-{
-    kmem_cache_destroy(nddata->queue_pool);
-    kfree(nddata->cdev);
-    kfree(nddata->devname);
-    kfree(nddata);
-}
-
-/* this function safely increases the current sequence number */
-int ndmgm_incseq(struct netdev_data *nddata)
-{
-    int rvalue;
-    atomic_inc(&nddata->curseq);
-    rvalue = atomic_read(&nddata->curseq);
-    return rvalue;
-}
-
-struct fo_access * ndmgm_find_acc(
-    struct netdev_data *nddata,
-    int access_id)
-{
-    struct fo_access *acc = NULL;
-
-    if (down_read_trylock(&nddata->sem)) {
-        hash_for_each_possible(nddata->foacc_htable,
-                                acc,
-                                hnode,
-                                access_id) {
-            if ( acc->access_id == access_id ) {
-                up_read(&nddata->sem);
-                return acc;
-            }
-        }
-        up_read(&nddata->sem);
-    }
-
-    return NULL;
-}
-
 int ndmgm_create_dummy(
     int nlpid,
     char *name)
@@ -486,26 +446,6 @@ void ndmgm_prepare(void)
     /* create the hashtable which will store data about created devices
      * and for easy access through pid */
     hash_init(netdev_htable);
-    netdev_count = 0;
-}
-
-/* returns netdev_data based on pid, you have to make sure to
- * increment the reference counter */
-struct netdev_data* ndmgm_find(int nlpid)
-{
-    struct netdev_data *nddata = NULL;
-
-    if (down_read_trylock(&netdev_htable_sem)) {
-        hash_for_each_possible(netdev_htable, nddata, hnode, (int)nlpid) {
-            if ( nddata->nlpid == nlpid ) {
-                up_read(&netdev_htable_sem);
-                return nddata;
-            }
-        }
-        up_read(&netdev_htable_sem);
-    }
-
-    return NULL;
 }
 
 void ndmgm_get(
