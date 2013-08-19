@@ -163,7 +163,7 @@ int ndmgm_create_server(
 
     return 0; /* success */
 free_nddata:
-    ndmgm_free_data(nddata);
+    kfree(nddata);
     return 1;
 }
 
@@ -356,16 +356,18 @@ int ndmgm_destroy_dummy(
 {
     if (down_write_trylock(&nddata->sem)) {
         nddata->active = false;
-        netdev_minors_used[MINOR(nddata->cdev->dev)] = 0;
-        
+
         if (ndmgm_destroy_allacc(nddata)) {
-            printk(KERN_ERR "ndmgm_destroy_dummy: failed to stop all acc\n");
+            printk(KERN_ERR
+                    "ndmgm_destroy_dummy: failed to stop all acc\n");
             return 1; /* failure */
         }
 
         /* should never happen but better test for it */
         if (ndmgm_refs(nddata) > 1) {
-            printk(KERN_ERR "ndmgm_destroy_dummy: more than one ref left: %d\n", ndmgm_refs(nddata));
+            printk(KERN_ERR
+                    "ndmgm_destroy_dummy: more than one ref left: %d\n",
+                    ndmgm_refs(nddata));
             return 1; /* failure */
         }
 
@@ -374,12 +376,11 @@ int ndmgm_destroy_dummy(
 
         up_write(&nddata->sem); /* has to be unlocked before kfree */
 
+        ndmgm_put_minor(MINOR(nddata->cdev->dev));
         ndmgm_free_data(nddata); /* finally free netdev_data */
-
-        netdev_count--;
         return 0; /* success */
     }
-    printk(KERN_ERR "ndmgm_destroy_dummy: failed to destroy netdev_data\n");
+    debug("failed to destroy netdev_data");
     return 1; /* failure */
 }
 
@@ -390,17 +391,20 @@ int ndmgm_destroy_server(
         nddata->active = false;
 
         if (ndmgm_refs(nddata) > 1) {
-            printk(KERN_ERR "ndmgm_destroy_server: more than one ref left: %d\n", ndmgm_refs(nddata));
+            printk(KERN_ERR
+                    "ndmgm_destroy_server: more than one ref left: %d\n",
+                    ndmgm_refs(nddata));
             return 1; /* failure */
         }
 
         up_write(&nddata->sem); /* has to be unlocked before kfree */
 
+        kfree(nddata->devname);
         kfree(nddata);
 
         return 0; /* success */
     }
-    printk(KERN_ERR "ndmgm_destroy_server: failed to destroy netdev_data\n");
+    debug("failed to destroy netdev_data");
     return 1; /* failure */
 }
 
@@ -421,10 +425,7 @@ int ndmgm_end(void)
                 printk(KERN_ERR "netdev_end: failed to destroy nddata\n");
             }
         }
-        debug("exited loop");
-        if (!hash_empty(netdev_htable)) {
-            debug("htable not empty yet!");
-        }
+        kfree(netdev_minors_used);
         up_write(&netdev_htable_sem);
         return 0; /* success */
     }
@@ -434,11 +435,17 @@ int ndmgm_end(void)
 
 void ndmgm_prepare(void)
 {
+    int i;
     /* create and array for all drivices which will be indexed with
      * minor numbers of those devices */
     netdev_minors_used = kcalloc(NETDEV_MAX_DEVICES,
                                 sizeof(*netdev_minors_used),
                                 GFP_KERNEL);
+    for (i = 0; i < NETDEV_MAX_DEVICES; i++) {
+        netdev_minors_used[i] = -1; /* -1 means free minor number */
+    }
+    netdev_max_minor = 0;
+
     /* create the hashtable which will store data about created devices
      * and for easy access through pid */
     hash_init(netdev_htable);
@@ -447,14 +454,22 @@ void ndmgm_prepare(void)
 void ndmgm_get(
     struct netdev_data *nddata)
 {
-    //debug("called from: %pS", __builtin_return_address(0));
+    /*
+    debug("dev: %15s, from: %pS",
+            nddata->devname,
+            __builtin_return_address(0));
+    */
     atomic_inc(&nddata->users);
 }
 
 void ndmgm_put(
     struct netdev_data *nddata)
 {
-    //debug("called from: %pS", __builtin_return_address(0));
+    /*
+    debug("dev: %15s, from: %pS",
+            nddata->devname,
+            __builtin_return_address(0));
+    */
     atomic_dec(&nddata->users);
 }
 
