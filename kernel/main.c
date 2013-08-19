@@ -14,7 +14,7 @@
 MODULE_VERSION("0.0.1");
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Jakub Sokołowski <panswiata_at_gmail_com>");
-MODULE_DESCRIPTION("This is my first kernel driver. Please don't use it.");
+MODULE_DESCRIPTION("This is an experimental kernel driver. Please use at your own risk.");
 
 static int dev_count = NETDEV_MAX_DEVICES; /* TODO driver option */
 static int netdev_major = NETDEV_MAJOR; /* TODO driver option */
@@ -82,7 +82,7 @@ fail:
 }
 
 static void __exit netdev_exit(void) { /* Destructor */
-    /* first diable the netlink module then you can disable the device */
+    /* first disable the netlink module then you can disable the device */
     netlink_exit();
     /* TODO
      * this should be really done by netlink code since it will disable devices
@@ -91,7 +91,6 @@ static void __exit netdev_exit(void) { /* Destructor */
     netdev_cleanup();
     return;
 }
-
 
 module_exit(netdev_exit);
 module_init(netdev_init);
