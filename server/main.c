@@ -13,6 +13,7 @@
 #include "signal.h"
 #include "proxy.h"
 #include "protocol.h"
+#include "debug.h"
 
 void parent_sig_chld(int signo) {
     pid_t pid;
@@ -109,30 +110,69 @@ int netdev_listener(
 
 struct proxy_dev ** read_config(char *filename, int *count) {
     struct proxy_dev **pdevs = NULL;
+    FILE *fp;
+    char c;
+    char line[100];
     int i = 0;
-    *count = 1;
+    int rvalue;
+    *count = 0;
+
+    if (filename == NULL) {
+        return NULL;
+    }
+
+    fp = fopen(filename, "r");
+
+    if (!fp) {
+        perror("failed to open file");
+        return NULL;
+    }
+
+    while (EOF != (fscanf(fp, "%c%*[^\n]", &c), fscanf(fp, "%*c"))) {
+        if (c != '#') { /* ignore comments */
+            ++*count;
+        }
+    }
+    rewind(fp); /* go back to the beginning of the file */
 
     pdevs = malloc(*count * sizeof(struct proxy_dev*));
+    memset(pdevs, 0, *count * sizeof(struct proxy_dev*));
 
     if (!pdevs) {
         perror("read_config: failed to allocate pdevs");
         return NULL; /* failure */
     }
 
-    /* allocate memory for all structures and then zero out elements
-     * of the array because we are using motherfucking C */
-    for ( i = 0;  i < *count ;  i++) {
-        pdevs[i] = malloc(sizeof(struct proxy_dev));
-        memset(pdevs[i], 0, sizeof(struct proxy_dev));
-    }
+    for (i = 0; i < *count; ) {
+        fgets(line, sizeof(line), fp);
+        if (line[0] == '#') { /* if first character is # it's a comment */
+            continue;
+        }
 
-    /* TODO this should read data from a config files and fill
-     * pdev structures based on that */
-    pdevs[0]->rm_ipaddr = "192.168.1.13";
-    pdevs[0]->rm_portaddr = NETDEV_SERVER_PORT;
-    pdevs[0]->remote_dev_name = "/dev/urandom";
-    pdevs[0]->dummy_dev_name = "netdev";
-    pdevs[0]->client = true; /* this is a client instance */
+        if (!pdevs[i]) {
+            pdevs[i] = malloc(sizeof(struct proxy_dev));
+            memset(pdevs[i], 0, sizeof(struct proxy_dev));
+            pdevs[i]->remote_dev_name = malloc(NETDEV_MAX_STRING);
+            pdevs[i]->dummy_dev_name =  malloc(NETDEV_MAX_STRING);
+            pdevs[i]->rm_ipaddr =       malloc(NETDEV_MAX_STRING);
+        }
+
+        pdevs[i]->client = true; /* this is a client instance */
+        rvalue  = sscanf(line, "%20[^;];%20[^;];%20[^;];%d\n",
+                        pdevs[i]->remote_dev_name,
+                        pdevs[i]->dummy_dev_name,
+                        pdevs[i]->rm_ipaddr,
+                        &pdevs[i]->rm_portaddr);
+        if (rvalue == EOF) {
+            break;
+        }
+        if (rvalue < 4) {
+            printf("failed to parse configuration in line %d\n", i+1);
+            break;
+        }
+        i++;
+    }
+    *count = i;
 
     return pdevs; /* success */
 }
