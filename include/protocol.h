@@ -5,7 +5,7 @@
  * the core protocol is changed */
 #define NETDEV_PROTOCOL_VERSION 2
 #define NETDEV_PROTOCOL_SUCCESS 0 /* 0 will always mean correct */
-#define NETDEV_PROTOCOL_FAILURE -1 /* 0 will always mean failure */
+#define NETDEV_PROTOCOL_FAILURE -1 /* -1 will always mean failure */
 
 /* size limit of messages sent through sendmsg */
 #define NETDEV_MESSAGE_LIMIT    213000
