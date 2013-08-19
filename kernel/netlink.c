@@ -79,17 +79,22 @@ void netlink_recv(struct sk_buff *skb)
         /* we will use this skb for ACK*/
         data = skb_copy(skb, GFP_KERNEL);
 
-        /* lock to make sure we send ACK first */
-        spin_lock(&nddata->nllock);
-
-        /* crate a new thread so server doesn't wait for ACK */
-        task = kthread_run(&fo_recv, data, "fo_recv");
+        /* create a new thread so server doesn't wait for ACK */
+        task = kthread_create(&fo_recv, data, "fo_recv");
         if (IS_ERR(task)) {
             printk(KERN_ERR
                     "fo_recv: failed to create thread, error = %ld\n",
                     PTR_ERR(task));
             err = PTR_ERR(task); /* failure */
         }
+
+        /* when lock is before kthread_run it creates "spinlock wrong CPU"
+         * error on the first open operation, that's why kthread_creat
+         * and wake_up_pprocess is used */
+        spin_lock(&nddata->nllock); /* make sure we send ACK first */
+
+        /* start the thread */
+        wake_up_process(task);
     } else {
         debug("unknown message type: %d", msgtype);
     }
