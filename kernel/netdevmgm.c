@@ -6,9 +6,10 @@
 #include "dbg.h"
 
 static DEFINE_HASHTABLE(netdev_htable, NETDEV_HTABLE_DEV_SIZE);
-static struct rw_semaphore netdev_htable_sem;
-unsigned int netdev_count;
-int *netdev_minors_used;
+static struct rw_semaphore  netdev_htable_sem;
+static struct rw_semaphore  netdev_minor_sem;
+static int netdev_max_minor;
+static int *netdev_minors_used; /* array with pids to all the devices */
 
 struct netdev_data * ndmgm_alloc_data(
     int nlpid,
@@ -211,6 +212,125 @@ int ndmgm_create_server(
 free_nddata:
     ndmgm_free_data(nddata);
     return 1;
+}
+
+void ndmgm_free_data(
+    struct netdev_data *nddata)
+{
+    kmem_cache_destroy(nddata->queue_pool);
+    kfree(nddata->cdev);
+    kfree(nddata->devname);
+    kfree(nddata);
+}
+
+/* returns netdev_data based on pid, you have to make sure to
+ * increment the reference counter */
+struct netdev_data* ndmgm_find(int nlpid)
+{
+    struct netdev_data *nddata = NULL;
+    if (nlpid == -1) {
+        printk("ndmgm_find: invalid pid\n");
+        return NULL;
+    }
+
+    if (down_read_trylock(&netdev_htable_sem)) {
+        hash_for_each_possible(netdev_htable, nddata, hnode, (int)nlpid) {
+            if ( nddata->nlpid == nlpid ) {
+                up_read(&netdev_htable_sem);
+                return nddata;
+            }
+        }
+        up_read(&netdev_htable_sem);
+    }
+
+    return NULL;
+}
+
+struct fo_access * ndmgm_find_acc(
+    struct netdev_data *nddata,
+    int access_id)
+{
+    struct fo_access *acc = NULL;
+
+    if (down_read_trylock(&nddata->sem)) {
+        hash_for_each_possible(nddata->foacc_htable,
+                                acc,
+                                hnode,
+                                access_id) {
+            if ( acc->access_id == access_id ) {
+                up_read(&nddata->sem);
+                return acc;
+            }
+        }
+        up_read(&nddata->sem);
+    }
+
+    return NULL;
+}
+
+void ndmgm_put_minor(
+    int minor)
+{
+    int i = 0;
+    if (down_write_trylock(&netdev_minor_sem)) {
+        netdev_minors_used[minor] = -1;
+        if (minor == netdev_max_minor) {
+            for (i = minor; i > 0; i--) {
+                if (netdev_minors_used[i] != -1) {
+                    netdev_max_minor = i;
+                }
+            }
+        }
+        up_write(&netdev_minor_sem);
+    }
+}
+
+int ndmgm_get_minor(
+    int pid)
+{
+    int minor = -1;
+    int i = 0;
+    if (down_write_trylock(&netdev_minor_sem)) {
+        if (netdev_max_minor == NETDEV_MAX_DEVICES) {
+            printk("ndmgm_get_minor: device limit reached: %d\n",
+                    NETDEV_MAX_DEVICES);
+            up_read(&netdev_minor_sem);
+            return -1;
+        }
+        for (i = 0; i <= netdev_max_minor+1; i++) {
+            if (netdev_minors_used[i] == -1) {
+                netdev_minors_used[i] = pid;
+                minor = i;
+                break;
+            }
+        }
+        if (minor >= 0) {
+            netdev_max_minor = max(netdev_max_minor, minor);
+        }
+        up_write(&netdev_minor_sem);
+    }
+    return minor;
+}
+
+int ndmgm_find_pid(
+    dev_t dev)
+{
+    int pid = -1;
+    if (down_read_trylock(&netdev_minor_sem)) {
+        pid = netdev_minors_used[MINOR(dev)];
+        up_read(&netdev_minor_sem);
+    }
+    return pid;
+}
+
+/* this function safely increases the current sequence number */
+int ndmgm_incseq(
+    struct netdev_data *nddata)
+{
+    int rvalue;
+    atomic_inc(&nddata->curseq);
+    rvalue = atomic_read(&nddata->curseq);
+    return rvalue;
 }
 
 int ndmgm_find_destroy(
