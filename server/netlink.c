@@ -38,7 +38,7 @@ int netlink_setup(
     pdev->nl_dst_addr->nl_groups = 0; /* unicast */
 
     rvalue = bind(pdev->nl_fd,
-                (SA *)pdev->nl_src_addr,
+                (struct sockaddr*)pdev->nl_src_addr,
                 sizeof(*pdev->nl_src_addr));
 
     if (rvalue < 0) {

@@ -47,7 +47,7 @@ struct proxy_dev * proxy_alloc_dev(int connfd)
     pdev->rm_addr = malloc(sizeof(*pdev->rm_addr));
     addrlen = sizeof(*pdev->rm_addr);
 
-    if (getpeername(connfd, (SA *)pdev->rm_addr, &addrlen) == -1) {
+    if (getpeername(connfd, (struct sockaddr *)pdev->rm_addr, &addrlen) == -1) {
         perror("proxy_alloc_dev(getperrname)");
         return NULL;
     }

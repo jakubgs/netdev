@@ -16,7 +16,4 @@
 #define NETDEV_FO_QUEUE_SIZE    64 /* has to be a power of 2 */
 #define NETDEV_REQ_POOL_NAME    "netdev_req_pool" /* for debugging */
 
-/* 2nd argument to listen(), max size of listen queue */
-#define NETDEV_LISTENQ          1024
-
 #endif /* _NETDEV_H */

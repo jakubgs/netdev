@@ -52,7 +52,7 @@ int netdev_listener(
     servaddr.sin_port   = htons(port);
 
     rvalue = bind(listenfd,
-                (SA *)&servaddr,
+                (struct sockaddr*)&servaddr,
                 sizeof(servaddr));
 
     if ( rvalue < 0 ) {
@@ -71,7 +71,7 @@ int netdev_listener(
     while (1) {
         clilen = sizeof(cliaddr);
 
-        if ((connfd = accept(listenfd, (SA *) &cliaddr, &clilen)) < 0) {
+        if ((connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen)) < 0) {
             if (errno == EINTR) {
                 continue;
             } else {

@@ -13,6 +13,9 @@
 /* defines the default netlink server port */
 #define NETDEV_SERVER_PORT      9999
 
+/* 2nd argument to listen(), max size of listen queue */
+#define NETDEV_LISTENQ          1024
+
 /* defines the netlink bus used, we want our own protocol so we use the 
  * last one of the 32 available buses */
 #define NETLINK_PROTOCOL        31
@@ -66,8 +69,5 @@
 
 #define MSGT_FO_START             100
 #define MSGT_FO_END               127
-
-/* for sake of convenience and shorter lines */
-#define SA struct sockaddr
 
 #endif /* _PROTOCOL_H */
