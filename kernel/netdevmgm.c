@@ -13,21 +13,13 @@ static int *netdev_minors_used; /* array with pids to all the devices */
 
 struct netdev_data * ndmgm_alloc_data(
     int nlpid,
-    char *name)
+    char *name,
+    int minor)
 {
     struct netdev_data *nddata;
+    char pool_name[30];
+    sprintf(pool_name, "%s:%s%d", NETDEV_REQ_POOL_NAME, name, minor);
 
-    /* check if we have space for another device */
-    /* TODO needs a reuse of device numbers from netdev_minors_used array */
-    if ( netdev_count + 1 > NETDEV_MAX_DEVICES ) {
-        printk(KERN_ERR "ndmgm_alloc_data: max devices reached = %d\n",
-                        NETDEV_MAX_DEVICES);
-        return 0;
-    }
-
-    /* GFP_KERNEL means this function can be blocked,
-     * so it can't be part of an atomic operation.
-     * For that GFP_ATOMIC would have to be used. */
     nddata = kzalloc(sizeof(*nddata), GFP_KERNEL);
     if (!nddata) {
         printk(KERN_ERR "ndmgm_alloc_data: failed to allocate nddata\n");
@@ -46,15 +38,16 @@ struct netdev_data * ndmgm_alloc_data(
         goto free_nddata;
     }
 
-    nddata->queue_pool = kmem_cache_create(NETDEV_REQ_POOL_NAME,
-                        sizeof(struct fo_req),
-                        0, 0, NULL); /* no alignment, flags or constructor */
+    nddata->queue_pool = kmem_cache_create(pool_name,
+                                            sizeof(struct fo_req),
+    /* no alignment, flags or constructor */ 0, 0, NULL);
+
     if (!nddata->queue_pool) {
         printk(KERN_ERR "ndmgm_alloc_data: failed to allocate queue_pool\n");
         goto free_cdev;
     }
 
-    sprintf(nddata->devname, "/dev/%s%d", name, netdev_count);
+    sprintf(nddata->devname, "/dev/%s%d", name, minor);
     hash_init(nddata->foacc_htable);
     init_rwsem(&nddata->sem);
     spin_lock_init(&nddata->nllock);
@@ -117,17 +110,24 @@ int ndmgm_create_dummy(
     char *name)
 {
     int err = 0;
+    int minor = -1;
     struct netdev_data *nddata = NULL;
-    debug("creating dummy device: /dev/%s%d", name, netdev_count);
 
-    if ( (nddata = ndmgm_alloc_data(nlpid, name)) == NULL ) {
+    minor = ndmgm_get_minor(nlpid);
+    if (minor == -1) {
+        printk(KERN_ERR "ndmgm_create_dummy: could not get minor\n");
+        return 1;
+    }
+    debug("creating dummy device: /dev/%s%d", name, minor);
+
+    if ( (nddata = ndmgm_alloc_data(nlpid, name, minor)) == NULL ) {
         printk(KERN_ERR "ndmgm_create_dummy: failed to create netdev_data\n");
         return 1;
     }
 
     cdev_init(nddata->cdev, &netdev_fops);
     nddata->cdev->owner = THIS_MODULE;
-    nddata->cdev->dev = MKDEV(MAJOR(netdev_devno), netdev_count);
+    nddata->cdev->dev = MKDEV(MAJOR(netdev_devno), minor);
     nddata->dummy = true; /* should be true for a dummy device */
 
     /* tell the kernel the cdev structure is ready,
@@ -145,27 +145,20 @@ int ndmgm_create_dummy(
                             nddata->cdev->dev, /* major and minor */
                             nddata, /* device data for callback   */
                             "%s%d", /* defines name of the device */
-                            name,
-                            MINOR(nddata->cdev->dev));
+                            name, minor);
 
     if (IS_ERR(nddata->device)) {
        err = PTR_ERR(nddata->device);
        printk(KERN_WARNING "[target] Error %d while trying to name %s%d\n",
                             err,
                             name,
-                            MINOR(nddata->cdev->dev));
+                            minor);
        goto undo_cdev;
     }
 
-    debug("new device: %d, %d",
-                        MAJOR(nddata->cdev->dev),
-                        MINOR(nddata->cdev->dev));
-
-    netdev_count++;
     /* add the device to hashtable with all devices since it's ready */
     ndmgm_get(nddata); /* increase count for hashtable */
     hash_add(netdev_htable, &nddata->hnode, (int)nlpid);
-    netdev_minors_used[MINOR(nddata->cdev->dev)] = nddata->nlpid;
 
     return 0; /* success */
 undo_cdev:
