@@ -19,8 +19,8 @@
  * of devices this driver will manage and store in the hashtable */
 #define NETDEV_HTABLE_DEV_SIZE  5
 #define NETDEV_HTABLE_ACC_SIZE  5
-#define NETDEV_MAX_DEVICES      32 /* 2 to the power of 5(HASHTABLE_SIZE)*/
-#define NETDEV_MAX_OPEN_FILES   32 /* 2 to the power of 5 */
+#define NETDEV_MAX_DEVICES      32 /* 2 to the power of 5(HTABLE_DEV_SIZE)*/
+#define NETDEV_MAX_OPEN_FILES   32 /* 2 to the power of 5(HTABLE_ACC_SIZE) */
 #define NETDEV_FO_QUEUE_SIZE    64 /* has to be a power of 2 */
 #define NETDEV_REQ_POOL_NAME    "netdev_req_pool" /* for debugging */
 /* defines the default netlink server port */
@@ -28,7 +28,7 @@
 
 #define NETDEV_MAXLINE          1024
 
-/* 2nd argument to listen() */
+/* 2nd argument to listen(), max size of listen queue */
 #define NETDEV_LISTENQ          1024
 
 /* defines the netlink bus used, we want our own protocol so we use the 
