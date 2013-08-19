@@ -5,7 +5,7 @@
 #include <netinet/in.h>     /* sockaddr_in */
 #include <sys/un.h>         /* sockaddr_un */
 
-#define MAX_PAYLOAD 1024 /* maximum payload size*/
+#define NETDEV_MAX_STRING 20
 
 typedef enum {
     true,
