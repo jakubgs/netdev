@@ -15,8 +15,6 @@ struct fo_req;
 /* __u32, unsigned 32bit type, 12 bit for majro, 20 minor */
 extern dev_t netdev_devno;
 extern struct class *netdev_class;
-extern unsigned int netdev_count;
-extern int *netdev_minors_used; /* array with pids to all the devices */
 
 struct netdev_data {
     unsigned int nlpid; /* pid of the process that created this device */
@@ -35,11 +33,14 @@ struct netdev_data {
     DECLARE_HASHTABLE(foacc_htable, NETDEV_HTABLE_ACC_SIZE);
 };
 
-struct netdev_data * ndmgm_alloc_data(int nlpid, char *name);
+struct netdev_data * ndmgm_alloc_data(int nlpid, char *name, int minor);
 int ndmgm_create_dummy(int nlpid, char *name);
 int ndmgm_create_server(int nlpid, char *name);
-struct netdev_data * ndmgm_find(int nlpid);
 void ndmgm_free_data(struct netdev_data *nddata);
+struct netdev_data * ndmgm_find(int nlpid);
+void ndmgm_put_minor(int minor);
+int ndmgm_get_minor(int pid);
+int ndmgm_find_pid(dev_t dev);
 int ndmgm_incseq(struct netdev_data *nddata);
 struct fo_access * ndmgm_find_acc(struct netdev_data *nddata, int access_id);
 int ndmgm_find_destroy(int nlpid);
