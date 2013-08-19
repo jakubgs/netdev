@@ -8,6 +8,7 @@
 #include <linux/kfifo.h>
 #include <linux/slab.h>
 
+#include "netdev.h"
 #include "protocol.h"
 #include "fo_comm.h"
 
