@@ -179,18 +179,39 @@ struct proxy_dev ** read_config(char *filename, int *count) {
 
 int main(int argc, char *argv[]) {
     int pid, dev_count, i, port = NETDEV_SERVER_PORT;
+    char *conffile = NULL;
+    char c;
     struct proxy_dev **pdevs = NULL;
+
+
+    while ((c = getopt(argc, argv, ":hf:p:")) != -1) {
+        switch(c) {
+        case 'p':
+            port = atoi(optarg);
+            break;
+        case 'f':
+            conffile = optarg;
+            break;
+        case 'h':
+            printf("usage: %s [-f CONFIGFILE] [-p SERVERPORT] [-h]\n", argv[0]);
+            return 0;
+        case ':':       /* -f or -o without operand */
+            fprintf(stderr,
+                "Option -%c requires an operand\n", optopt);
+            return 1;
+        case '?':
+            fprintf(stderr,
+                "Unrecognized option: '-%c'\n", optopt);
+            return 1;
+        }
+    }
 
     /* to run waitpid for all forked proxies */
     signal(SIGCHLD, parent_sig_chld);
 
-    if (argc == 2) {
-        port = atoi(argv[1]);
-
-        if (!(pdevs = read_config(NULL, &dev_count))) {
-            return 1;
-        }
-
+    if (!(pdevs = read_config(conffile, &dev_count))) {
+        printf("failed to client read configuration\n");
+    } else {
         for ( i = 0 ; i < dev_count ; i++ ) {
             if ( ( pid = fork() ) == 0 ) {
                 proxy_client(pdevs[i]);
