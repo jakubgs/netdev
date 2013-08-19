@@ -164,8 +164,7 @@ int ndfo_send_open(struct inode *inode, struct file *filp)
         .rvalue = -EIO
     };
 
-    nddata = ndmgm_find(netdev_minors_used[MINOR(inode->i_cdev->dev)]);
-    ndmgm_get(nddata);
+    nddata = ndmgm_find(ndmgm_find_pid(inode->i_cdev->dev));
 
     /* get the device connected with this file */
     acc = fo_acc_start(nddata, current->pid);
@@ -182,7 +181,6 @@ int ndfo_send_open(struct inode *inode, struct file *filp)
                     &args, sizeof(args),
                     NULL, 0);
 
-    ndmgm_put(nddata);
     if (rvalue < 0) {
         debug("rvalue = %d", rvalue);
         return rvalue;
