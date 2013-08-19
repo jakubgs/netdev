@@ -311,11 +311,11 @@ int ndmgm_destroy(
     struct netdev_data *nddata)
 {
     int rvalue;
-    debug("destroying device %s", nddata->devname);
     if (!nddata) {
         printk(KERN_ERR "ndmgm_destroy: nddata is NULL\n");
         return 1; /* failure */
     }
+    debug("destroying device %s", nddata->devname);
 
     if (nddata->dummy == true) {
         rvalue = ndmgm_destroy_dummy(nddata);
@@ -335,7 +335,6 @@ int ndmgm_destroy_allacc(
 
     if (down_write_trylock(&netdev_htable_sem)) {
         hash_for_each_safe(nddata->foacc_htable, i, tmp, acc, hnode) {
-            debug("deleting acc id = %d", acc->access_id);
             hash_del(&nddata->hnode); /* delete the element from table */
 
             /* make sure all pending operations are completed */
@@ -345,9 +344,6 @@ int ndmgm_destroy_allacc(
             }
 
             fo_acc_destroy(acc);
-        }
-        if (!hash_empty(netdev_htable)) {
-            debug("htable not empty yet!");
         }
         up_write(&netdev_htable_sem);
         return 0; /* success */
