@@ -14,4 +14,4 @@ $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $(TARGET) $^
 
 clean:
-	rm ./server ./*.o
+	rm ./${TARGET} ./*.o

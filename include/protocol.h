@@ -10,8 +10,8 @@
 /* size limit of messages sent through sendmsg */
 #define NETDEV_MESSAGE_LIMIT    213000
 
-/* defines the default netlink server port */
-#define NETDEV_SERVER_PORT      9999
+/* defines the default daemon port */
+#define NETDEV_DAEMON_PORT      9999
 
 /* 2nd argument to listen(), max size of listen queue */
 #define NETDEV_LISTENQ          1024

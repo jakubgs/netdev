@@ -1,6 +1,6 @@
 # Object files
 *.o
-server
+netdevd
 
 # Libraries
 *.lib

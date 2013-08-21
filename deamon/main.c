@@ -178,7 +178,7 @@ struct proxy_dev ** read_config(char *filename, int *count) {
 }
 
 int main(int argc, char *argv[]) {
-    int pid, dev_count, i, port = NETDEV_SERVER_PORT;
+    int pid, dev_count, i, port = NETDEV_DAEMON_PORT;
     char *conffile = NULL;
     char c;
     struct proxy_dev **pdevs = NULL;
