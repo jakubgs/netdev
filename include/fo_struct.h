@@ -13,13 +13,13 @@ struct s_fo_llseek {
 struct s_fo_read {
     char __user *data;
     size_t size;
-    loff_t *offset;
+    loff_t offset;
     ssize_t rvalue;
 };
 struct s_fo_write {
     char __user *data;
     size_t size;
-    loff_t *offset;
+    loff_t offset;
     ssize_t rvalue;
 };
 struct s_fo_aio_read {

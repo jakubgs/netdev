@@ -30,7 +30,7 @@ ssize_t ndfo_send_read(struct file *filp, char __user *data, size_t size, loff_t
     ssize_t rvalue = 0;
     struct s_fo_read args = {
         .size = size,
-        .offset = offset,
+        .offset = *offset,
         .rvalue = -EIO
     };
     if (size >= NETDEV_MESSAGE_LIMIT) {
@@ -52,6 +52,8 @@ ssize_t ndfo_send_read(struct file *filp, char __user *data, size_t size, loff_t
         debug("rvalue = %zu", rvalue);
         return rvalue;
     }
+
+    *offset = args.offset;
     rvalue = copy_to_user(data, args.data, args.rvalue);
     if (rvalue > 0) {
         debug("rvalue = %zu", rvalue);
@@ -66,7 +68,7 @@ ssize_t ndfo_send_write(struct file *filp, const char __user *data, size_t size,
     size_t rvalue = 0;
     struct s_fo_write args = {
         .size = size,
-        .offset = offset,
+        .offset = *offset,
         .rvalue = -EIO
     };
     if (size >= NETDEV_MESSAGE_LIMIT) {
@@ -79,6 +81,7 @@ ssize_t ndfo_send_write(struct file *filp, const char __user *data, size_t size,
         return -ENOMEM;
     }
 
+    *offset = args.offset;
     rvalue = copy_from_user(args.data, data, size);
     if (rvalue > 0) {
         debug("rvalue = %zu", rvalue);
