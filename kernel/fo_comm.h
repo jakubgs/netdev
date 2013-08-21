@@ -9,6 +9,7 @@
 #include "netdevmgm.h"
 #include "fo_access.h"
 
+/* necessary since netdevmgm.h and fo_comm.h reference each other */
 struct netdev_data;
 /* file structure for a queue of operations of dummy device, those will have
  * to be allocated fast and from a large pool since there will be a lot */

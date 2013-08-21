@@ -12,6 +12,7 @@
 #include "protocol.h"
 #include "fo_comm.h"
 
+/* necessary since netdevmgm.h and fo_comm.h reference each other */
 struct fo_req;
 /* __u32, unsigned 32bit type, 12 bit for majro, 20 minor */
 extern dev_t netdev_devno;
