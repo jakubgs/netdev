@@ -14,15 +14,15 @@ The code is not yet stable or really usable. Test at your own peril. This WILL c
 Usage
 -----
 
-Both kernel module and the server program can be compiled with make.
+Both kernel module and the daemon program can be compiled with make.
 
-Server can be started with or without arguments.
+Daemon can be started with or without arguments.
 
-    Usage: ./server [-f CONFIGFILE] [-p SERVERPORT] [-h]
+    Usage: ./netdevd [-f CONFIGFILE] [-p LISTENPORT] [-h]
 
 Format of configuration file:
 
-    RemoteDevicePath;DummyDeviceName;ServerIP;ServerPort
+    RemoteDevicePath;DummyDeviceName;DaemonIP;DaemonPort
 
 Example:
 

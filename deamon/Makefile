@@ -3,7 +3,7 @@ CFLAGS = -g -Wall
 INCLUDE = -I../include -I./lib
 DEPS = ../include/protocol.h
 OBJ = netlink.o conn.o signal.o proxy.o main.o
-TARGET = server
+TARGET = netdevd
 
 all: $(TARGET)
 
