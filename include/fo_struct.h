@@ -5,7 +5,6 @@
 #include <linux/fs.h>
 
 /* structures used to pass file operation arguments to sending function */
-/* TODO add return values of functions as "rvalue" or something like that */
 struct s_fo_llseek {
     loff_t offset;
     int whence;
