@@ -49,12 +49,11 @@ err:
 void fo_acc_destroy(
     struct fo_access *acc)
 {
-    if (down_write_trylock(&acc->nddata->sem)) {
-        hash_del(&acc->hnode);
-        ndmgm_put(acc->nddata);
+    down_write(&acc->nddata->sem);
+    hash_del(&acc->hnode);
+    ndmgm_put(acc->nddata);
+    up_write(&acc->nddata->sem);
 
-        up_write(&acc->nddata->sem);
-    }
     if (acc->nddata->dummy) {
         kfifo_free(&acc->fo_queue);
     }
@@ -67,23 +66,20 @@ int fo_acc_free_queue(
     int size = 0;
     struct fo_req *req = NULL;
 
-    if (down_write_trylock(&acc->sem)) {
-        /* destroy all requests in the queue */
-        while (!kfifo_is_empty(&acc->fo_queue)) {
-            size = kfifo_out(&acc->fo_queue, &req, sizeof(req));
-            if ( size != sizeof(req) || IS_ERR(req)) {
-                printk(KERN_ERR "fo_acc_free_queue: failed to fetch from queue, size = %d\n", size);
-                return 1; /* failure */
-            }
-
-            req->rvalue = -ENODATA;
-            complete(&req->comp); /* complete all pending file operations */
+    down_write(&acc->sem);
+    /* destroy all requests in the queue */
+    while (!kfifo_is_empty(&acc->fo_queue)) {
+        size = kfifo_out(&acc->fo_queue, &req, sizeof(req));
+        if ( size != sizeof(req) || IS_ERR(req)) {
+            printk(KERN_ERR "fo_acc_free_queue: failed to fetch from queue, size = %d\n", size);
+            return 1; /* failure */
         }
-        up_write(&acc->sem);
-        return 0; /* success */
-    }
 
-    return 1; /* failure */
+        req->rvalue = -ENODATA;
+        complete(&req->comp); /* complete all pending file operations */
+    }
+    up_write(&acc->sem);
+    return 0; /* success */
 }
 
 /* find the filo operation request with the correct sequence number */
