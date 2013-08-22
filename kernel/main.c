@@ -38,36 +38,31 @@ static void netdev_cleanup(void) {
     return;
 }
 
-static int __init netdev_init(void) { /* Constructor */
-    /* TODO
-     * this whole section will have to be moved to a separate function that will
-     * be used by netlink_recv to create devices as the server process sends
-     * information about them
-     */
+static int __init netdev_init(void) { /* constructor */
     int err;
     int first_minor = 0;
     /* get a range of minor numbers (starting with 0) to work with
      * we are using alloc rather than register to get dynamic major */
-    err = alloc_chrdev_region(&netdev_devno, first_minor, dev_count, NETDEV_NAME);
+    err = alloc_chrdev_region(&netdev_devno, first_minor, dev_count, netdev_name);
 
-    /* Fail gracefully if need be */
+    /* fail gracefully if need be */
     if (err) {
-        printk(KERN_ERR "netdev: error registering chrdev!\n");
+        printk(kern_err "netdev: error registering chrdev!\n");
         return err;
     }
-    netdev_major = MAJOR(netdev_devno);
+    netdev_major = major(netdev_devno);
 
-    netdev_class = class_create(THIS_MODULE, NETDEV_NAME);
-    if (IS_ERR(netdev_class)) {
-        err = PTR_ERR(netdev_class);
+    netdev_class = class_create(this_module, netdev_name);
+    if (is_err(netdev_class)) {
+        err = ptr_err(netdev_class);
         goto fail;
     }
     
-    /* Setup netlink */
+    /* setup netlink */
     err = netlink_init();
 
     if (err) {
-        printk(KERN_ERR "netdev: netlink setup failed!\n");
+        printk(kern_err "netdev: netlink setup failed!\n");
         goto fail;
     }
 
@@ -82,12 +77,7 @@ fail:
 }
 
 static void __exit netdev_exit(void) { /* Destructor */
-    /* first disable the netlink module then you can disable the device */
     netlink_exit();
-    /* TODO
-     * this should be really done by netlink code since it will disable devices
-     * base on establised connections with netdev server process
-     * */
     netdev_cleanup();
     return;
 }
