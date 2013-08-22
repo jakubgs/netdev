@@ -175,8 +175,8 @@ int netlink_send(
 free_skb:
     nlmsg_free(skb);
     return -1;
-
 }
+
 int netlink_send_msg(
     int nlpid,
     struct nlmsghdr *nlh,
