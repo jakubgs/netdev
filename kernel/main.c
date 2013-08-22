@@ -21,7 +21,8 @@ static int netdev_major = NETDEV_MAJOR; /* TODO driver option */
 dev_t netdev_devno;
 struct class *netdev_class;
 
-static void netdev_cleanup(void) {
+static void netdev_cleanup(void)
+{
     while (ndmgm_end()) {
         printk(KERN_ERR "netdev_cleanup: failed to delete devices");
     }
@@ -38,7 +39,8 @@ static void netdev_cleanup(void) {
     return;
 }
 
-static int __init netdev_init(void) { /* constructor */
+static int __init netdev_init(void)
+{
     int err;
     int first_minor = 0;
     /* get a range of minor numbers (starting with 0) to work with
@@ -76,7 +78,8 @@ fail:
     return err;
 }
 
-static void __exit netdev_exit(void) { /* Destructor */
+static void __exit netdev_exit(void)
+{
     netlink_exit();
     netdev_cleanup();
     return;
