@@ -31,6 +31,6 @@ int fo_complete(struct fo_access *acc, struct nlmsghdr *nlh, struct sk_buff *skb
 int fo_execute(struct fo_access *acc, struct nlmsghdr *nlh, struct sk_buff *skb);
 void * fo_serialize(struct fo_req *req, size_t *bufflen);
 struct fo_req * fo_deserialize_toreq(struct fo_req *req, void *data);
-struct fo_req * fo_deserialize(void *data);
+struct fo_req * fo_deserialize(struct fo_access *acc, void *data);
 
 #endif /* _FO_COMM_H */
