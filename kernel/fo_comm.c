@@ -87,8 +87,8 @@ int fo_send(
 
     rvalue = req->rvalue;
 out:
-    kmem_cache_free(acc->nddata->queue_pool, req);
     ndmgm_put(acc->nddata);
+    kmem_cache_free(acc->nddata->queue_pool, req);
     if (msgtype == MSGT_FO_RELEASE) {
         fo_acc_destroy(acc);
     }
@@ -181,7 +181,7 @@ int fo_execute(
     int fonum = 0;
     int rvalue = -ENODATA;
 
-    req = fo_deserialize(NLMSG_DATA(nlh));
+    req = fo_deserialize(acc, NLMSG_DATA(nlh));
     if (!req) {
         printk(KERN_ERR "fo_execute: failed to deserialize req\n");
         goto err;
@@ -226,10 +226,11 @@ int fo_execute(
 
     rvalue = 0; /* success */
 err:
-    schedule(); /* necessary to make sure netlink_recv sends ACK */
     /* rvalue is -1 so sending it back untouched will mean failure */
     netlink_send_skb(acc->nddata, skb);
-    kfree(req);
+    kfree(req->args);
+    kfree(req->data);
+    kmem_cache_free(acc->nddata->queue_pool, req);
     kfree(buff);
     return rvalue;
 }
@@ -290,11 +291,8 @@ struct fo_req * fo_deserialize_toreq(
     size_t size = 0;
 
     if (!req) {
-        req = kzalloc(sizeof(*req), GFP_KERNEL);
-        if (!req) {
-            printk(KERN_ERR "fo_deserialize: failed to allocate req\n");
-            return NULL; /* failure */
-        }
+        printk(KERN_ERR "fo_deserialize_toreq: req is NULL\n");
+        return NULL; /* failure */
     }
 
     /* get all the data */
@@ -312,7 +310,7 @@ struct fo_req * fo_deserialize_toreq(
     if (!req->args) {
         req->args = kzalloc(req->size, GFP_KERNEL);
         if (!req->args) {
-            printk(KERN_ERR "fo_deserialize: failed to allocate args\n");
+            printk(KERN_ERR "fo_deserialize_toreq: failed to allocate args\n");
             return NULL;
         }
     }
@@ -334,16 +332,19 @@ struct fo_req * fo_deserialize_toreq(
 }
 
 struct fo_req * fo_deserialize(
+    struct fo_access *acc,
     void *data)
 {
     struct fo_req *req = NULL;
     size_t size = 0;
 
-    req = kzalloc(sizeof(*req), GFP_KERNEL);
+    req = kmem_cache_alloc(acc->nddata->queue_pool, GFP_KERNEL);
     if (!req) {
         printk(KERN_ERR "fo_deserialize: failed to allocate req\n");
         return NULL; /* failure */
     }
+    req->args = NULL;
+    req->data = NULL;
 
     /* get all the data */
     memcpy(&req->access_id, data + size, sizeof(req->access_id));
