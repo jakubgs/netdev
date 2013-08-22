@@ -79,7 +79,6 @@ int netlink_send(
         printf("netlink_send: failed to send message\n");
     }
 
-    free(nlh);
     return 0; /* success */
 }
 
@@ -115,6 +114,7 @@ int netlink_send_msg(
         return -1; /* failure */
     }
 
+    free(nlh);
     return 0; /* success */
 }
 
@@ -123,6 +123,7 @@ int netlink_send_nlh(
     struct nlmsghdr *nlh)
 {
     struct nlmsgerr *msgerr = NULL;
+    int rvalue = -1;
     nlh->nlmsg_pid = pdev->pid;
 
     /* send everything */
@@ -141,14 +142,17 @@ int netlink_send_nlh(
         msgerr = ((struct nlmsgerr*)NLMSG_DATA(nlh));
         if (msgerr->error != 0) {
             debug("delivery failure, msgerr->error = %d", msgerr->error);
-            return -1; /* failure */
+            goto err;
         }
     } else {
         printf("netlink_send: next message was not confirmation!\n");
-        return -1; /* failure */
+        goto err;
     }
 
-    return 0; /* success */
+    rvalue = 0; /* success */
+err:
+    free(nlh);
+    return rvalue;
 }
 
 struct nlmsghdr * netlink_recv(
