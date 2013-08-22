@@ -43,9 +43,15 @@ void netlink_recv(struct sk_buff *skb)
     if (msgtype >= MSGT_CONTROL_START && msgtype < MSGT_CONTROL_END) {
         switch (msgtype) {
         case MSGT_CONTROL_ECHO:
-            err = netlink_echo(pid, nlh->nlmsg_seq,(char*)nlmsg_data(nlh));
+            err = netlink_send_msg(pid, nlh, NLM_F_ECHO,
+                                    NLMSG_DATA(nlh),
+                                    sizeof(int));
             break;
         case MSGT_CONTROL_VERSION:
+            msgtype = NETDEV_PROTOCOL_VERSION,
+            err = netlink_send_msg(pid, nlh, NLM_F_ECHO,
+                                    &msgtype,
+                                    sizeof(msgtype));
             break;
         case MSGT_CONTROL_REG_DUMMY:
             err = ndmgm_create_dummy(pid, (char*)nlmsg_data(nlh));
@@ -55,12 +61,6 @@ void netlink_recv(struct sk_buff *skb)
             break;
         case MSGT_CONTROL_UNREGISTER:
             err = ndmgm_find_destroy(pid);
-            break;
-        case MSGT_CONTROL_RECOVER:
-            break;
-        case MSGT_CONTROL_DRIVER_STOP:
-            break;
-        case MSGT_CONTROL_LOSTCONN:
             break;
         default:
             printk(KERN_ERR
@@ -125,6 +125,10 @@ int netlink_send(
     int rvalue;
 
     //debug("type: %d, pid: %d, size: %zu", msgtype, nddata->nlpid, bufflen);
+    if (!nddata) {
+        printk(KERN_ERR "netlink_send: nddata is NULL\n");
+        return -1;
+    }
 
     /* allocate space for message header and it's payload */
     skb = nlmsg_new(bufflen, GFP_KERNEL);
@@ -171,6 +175,21 @@ int netlink_send(
 free_skb:
     nlmsg_free(skb);
     return -1;
+
+}
+int netlink_send_msg(
+    int nlpid,
+    struct nlmsghdr *nlh,
+    int flags,
+    void *buff,
+    size_t bufflen)
+{
+    return netlink_send(ndmgm_find(nlpid),
+                        nlh->nlmsg_seq,
+                        nlh->nlmsg_type,
+                        flags,
+                        buff,
+                        bufflen);
 }
 
 int netlink_send_skb(
@@ -235,51 +254,6 @@ struct sk_buff * netlink_pack_skb(
     memcpy(nlmsg_data(nlh), buff, bufflen);
 
     return skb; /* success */
-}
-
-int netlink_echo(int pid, int seq, char *msg)
-{
-    struct nlmsghdr *nlh;
-    struct sk_buff *skb;
-    int msg_size = strlen(msg);
-    int rvalue;
-
-    printk(KERN_INFO "netlink: received msg payload: %s\n", msg);
-
-    /* allocate memory for sk_buff, no flags */
-    skb = nlmsg_new(msg_size, GFP_KERNEL);
-
-    if(!skb) {
-        printk(KERN_ERR "netlink: failed to allocate new sk_buff!\n");
-        rvalue = -1;
-        goto skbfree;
-    }
-
-    /* set pid, seq, message type, payload size and flags */
-    nlh = nlmsg_put(
-                    skb,
-                    pid,
-                    seq,
-                    MSGT_CONTROL_ECHO,
-                    msg_size,
-                    NLM_F_ACK);
-
-    NETLINK_CB(skb).dst_group = 0; /* not in mcast group */
-
-    strncpy(nlmsg_data(nlh) ,msg ,msg_size);
-
-    /* send messsage, nlmsg_unicast will take care of freeing skb */
-    rvalue = nlmsg_unicast(nl_sk, skb, pid);
-
-    if(rvalue<=0) {
-        printk(KERN_ERR "netlink: error while replying to process\n");
-        return -1;
-    }
-
-    return 0; /* success */
-skbfree:
-    nlmsg_free(skb);
-    return -1;
 }
 
 int netlink_init(void)
