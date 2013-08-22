@@ -45,31 +45,30 @@ static int __init netdev_init(void)
     int first_minor = 0;
     /* get a range of minor numbers (starting with 0) to work with
      * we are using alloc rather than register to get dynamic major */
-    err = alloc_chrdev_region(&netdev_devno, first_minor, dev_count, netdev_name);
+    err = alloc_chrdev_region(&netdev_devno, first_minor, dev_count, NETDEV_NAME);
 
     /* fail gracefully if need be */
     if (err) {
-        printk(kern_err "netdev: error registering chrdev!\n");
+        printk(KERN_ERR "netdev: error registering chrdev!\n");
         return err;
     }
-    netdev_major = major(netdev_devno);
+    netdev_major = MAJOR(netdev_devno);
 
-    netdev_class = class_create(this_module, netdev_name);
-    if (is_err(netdev_class)) {
-        err = ptr_err(netdev_class);
+    netdev_class = class_create(THIS_MODULE, NETDEV_NAME);
+    if (IS_ERR(netdev_class)) {
+        err = PTR_ERR(netdev_class);
         goto fail;
     }
     
-    /* setup netlink */
-    err = netlink_init();
-
-    if (err) {
-        printk(kern_err "netdev: netlink setup failed!\n");
-        goto fail;
-    }
-
     /* create array and hashtable for devices */
     ndmgm_prepare();
+
+    /* setup netlink */
+    err = netlink_init();
+    if (err) {
+        printk(KERN_ERR "netdev: netlink setup failed!\n");
+        goto fail;
+    }
 
     return 0; /* success */
 
