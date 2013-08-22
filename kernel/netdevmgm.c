@@ -133,6 +133,9 @@ int ndmgm_create_server(
     char *name)
 {
     struct netdev_data *nddata = NULL;
+    char pool_name[30];
+    sprintf(pool_name, "%s:%s", NETDEV_REQ_POOL_NAME, name);
+
     debug("creating server for: %s", name);
 
     nddata = kzalloc(sizeof(*nddata), GFP_KERNEL);
@@ -146,6 +149,16 @@ int ndmgm_create_server(
         printk(KERN_ERR "ndmgm_create_server: failed to allocate nddata\n");
         goto free_nddata;
     }
+
+    nddata->queue_pool = kmem_cache_create(pool_name,
+                                            sizeof(struct fo_req),
+    /* no alignment, flags or constructor */ 0, 0, NULL);
+
+    if (!nddata->queue_pool) {
+        printk(KERN_ERR "ndmgm_alloc_data: failed to allocate queue_pool\n");
+        goto free_devname;
+    }
+
 
     memcpy(nddata->devname, name, strlen(name)+1);
     init_rwsem(&nddata->sem);
@@ -162,6 +175,8 @@ int ndmgm_create_server(
     /* TODO find cdev and device of the dev we are serving */
 
     return 0; /* success */
+free_devname:
+    kfree(nddata->devname);
 free_nddata:
     kfree(nddata);
     return 1;
@@ -360,6 +375,7 @@ int ndmgm_destroy_dummy(
         if (ndmgm_destroy_allacc(nddata)) {
             printk(KERN_ERR
                     "ndmgm_destroy_dummy: failed to stop all acc\n");
+            up_write(&nddata->sem);
             return 1; /* failure */
         }
 
@@ -368,6 +384,7 @@ int ndmgm_destroy_dummy(
             printk(KERN_ERR
                     "ndmgm_destroy_dummy: more than one ref left: %d\n",
                     ndmgm_refs(nddata));
+            up_write(&nddata->sem);
             return 1; /* failure */
         }
 
@@ -394,11 +411,13 @@ int ndmgm_destroy_server(
             printk(KERN_ERR
                     "ndmgm_destroy_server: more than one ref left: %d\n",
                     ndmgm_refs(nddata));
+            up_write(&nddata->sem); /* has to be unlocked before kfree */
             return 1; /* failure */
         }
 
         up_write(&nddata->sem); /* has to be unlocked before kfree */
 
+        kmem_cache_destroy(nddata->queue_pool);
         kfree(nddata->devname);
         kfree(nddata);
 
@@ -454,22 +473,14 @@ void ndmgm_prepare(void)
 void ndmgm_get(
     struct netdev_data *nddata)
 {
-    /*
-    debug("dev: %15s, from: %pS",
-            nddata->devname,
-            __builtin_return_address(0));
-    */
+    //debug("dev: %15s, from: %pS", nddata->devname, __builtin_return_address(0));
     atomic_inc(&nddata->users);
 }
 
 void ndmgm_put(
     struct netdev_data *nddata)
 {
-    /*
-    debug("dev: %15s, from: %pS",
-            nddata->devname,
-            __builtin_return_address(0));
-    */
+    //debug("dev: %15s, from: %pS", nddata->devname, __builtin_return_address(0));
     atomic_dec(&nddata->users);
 }
 
