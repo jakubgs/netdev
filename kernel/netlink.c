@@ -298,11 +298,11 @@ int netlink_init(void)
                                     &nl_cfg);
 
     if(!nl_sk) {
-        printk(KERN_ALERT "netlink_init: error creating socket.\n");
+        printk(KERN_ERR "netlink_init: error creating socket.\n");
         return -1;
     }
 
-    printk("netdev: Netlink setup complete\n");
+    printk(KERN_INFO "netlink_init: netlink setup complete\n");
     return 0;
 }
 
