@@ -24,21 +24,17 @@ int conn_send(struct proxy_dev *pdev, struct netdev_header *ndhead) {
     msgh.msg_iovlen = 1;
     iov.iov_len = size;
     iov.iov_base = buff;
-    if (!iov.iov_base) {
-        perror("conn_send(malloc)");
-        return -1;
-    }
 
     memcpy(iov.iov_base, ndhead, sizeof(*ndhead));
     memcpy(iov.iov_base + sizeof(*ndhead), ndhead->payload, ndhead->size);
 
     if (sendall(pdev->rm_fd, &msgh, size) == -1) {
         printf("conn_send: failed to send data\n");
+        free(buff);
         return -1; /* failure */
     }
 
     free(buff);
-
     return 0; /* success */
 }
 
@@ -78,7 +74,7 @@ struct netdev_header * conn_recv(struct proxy_dev *pdev) {
 int conn_server(struct proxy_dev *pdev) {
     struct netdev_header *ndhead;
     int version = NETDEV_PROTOCOL_VERSION;
-    int rvalue = 0;
+    int rvalue = -1;
 
     /* create TCP/IP socket for connection with server */
     pdev->rm_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -121,7 +117,7 @@ int conn_server(struct proxy_dev *pdev) {
     /* send version */
     if (conn_send(pdev, ndhead) == -1) {
         printf("conn_server: failed to send version\n");
-        return -1;
+        goto err;
     }
     free(ndhead->payload);
     free(ndhead);
@@ -130,27 +126,33 @@ int conn_server(struct proxy_dev *pdev) {
 
     if (!ndhead) {
         printf("conn_server: failed to receive version reply\n");
-        return -1;
+        goto err;
     }
 
     if (ndhead->size != sizeof(int)) {
         printf("conn_server: wrong payload size\n");
-        return -1;
+        goto err;
     }
 
     version = *((int*)ndhead->payload);
     if (version != 0) {
         printf("conn_server: wrong version = %d\n", version);
-        return -1;
+        goto err;
     }
 
     printf("conn_server: connection successful, version correct = %d\n",
             version);
-    return 0;
+
+    rvalue = 0; /* success */
+err:
+    free(ndhead->payload);
+    free(ndhead);
+    return rvalue;
 }
 
 int conn_client(struct proxy_dev *pdev) {
     struct netdev_header *ndhead;
+    int rvalue = -1;
     int version;
     int reply = NETDEV_PROTOCOL_SUCCESS; /* success = 0 */
 
@@ -158,7 +160,7 @@ int conn_client(struct proxy_dev *pdev) {
 
     if (ndhead->msgtype != MSGT_CONTROL_VERSION) {
         printf("conn_client: wrong message type!\n");
-        return -1; /* failure */
+
     }
 
     if (ndhead->size != sizeof(int)) {
@@ -178,11 +180,15 @@ int conn_client(struct proxy_dev *pdev) {
 
     if (conn_send(pdev, ndhead) == -1) {
         printf("conn_client: failed to send version reply\n");
-        return -1;
+        goto err;
     }
 
     printf("conn_client: protocol version correct = %d\n", version);
-    return reply; /* success */
+    rvalue = reply;
+err:
+    free(ndhead->payload);
+    free(ndhead);
+    return rvalue; /* success */
 }
 
 int conn_send_dev_reg(struct proxy_dev *pdev) {
