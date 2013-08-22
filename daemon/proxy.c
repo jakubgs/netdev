@@ -105,7 +105,7 @@ void proxy_client(struct proxy_dev *pdev)
         printf("proxy_client: loop broken\n");
     }
 
-    if (!netlink_unregister_dev(pdev)) {
+    if (netlink_unregister_dev(pdev) == -1) {
         printf("proxy_client: failed to unregister device!\n");
     }
 
