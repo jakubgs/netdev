@@ -13,7 +13,7 @@ int netlink_setup(
     int rvalue = 0;
 
     /* create socket for netlink */
-    pdev->nl_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_PROTOCOL);
+    pdev->nl_fd = socket(PF_NETLINK, SOCK_RAW, NETDEV_PROTOCOL);
 
     /* check if socket was actually created */
     if (pdev->nl_fd < 0) {

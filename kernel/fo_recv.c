@@ -29,7 +29,7 @@ int ndfo_recv_read(struct fo_access *acc, struct fo_req *req) {
     args->rvalue = acc->filp->f_op->read(acc->filp,
                                             req->data,
                                             args->size,
-                                            args->offset);
+                                            &args->offset);
 
     return 0;
 }
@@ -40,7 +40,7 @@ int ndfo_recv_write(struct fo_access *acc, struct fo_req *req) {
     args->rvalue = acc->filp->f_op->write(acc->filp,
                                             req->data,
                                             args->size,
-                                            args->offset);
+                                            &args->offset);
 
     /* don't send written data back */
     kfree(req->data);

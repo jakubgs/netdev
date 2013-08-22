@@ -67,19 +67,23 @@ int fo_acc_free_queue(
     int size = 0;
     struct fo_req *req = NULL;
 
-    /* destroy all requests in the queue */
-    while (!kfifo_is_empty(&acc->fo_queue)) {
-        size = kfifo_out(&acc->fo_queue, &req, sizeof(req));
-        if ( size != sizeof(req) || IS_ERR(req)) {
-            printk(KERN_ERR "fo_acc_free_queue: failed to fetch from queue, size = %d\n", size);
-            return 1; /* failure */
-        }
+    if (down_write_trylock(&acc->sem)) {
+        /* destroy all requests in the queue */
+        while (!kfifo_is_empty(&acc->fo_queue)) {
+            size = kfifo_out(&acc->fo_queue, &req, sizeof(req));
+            if ( size != sizeof(req) || IS_ERR(req)) {
+                printk(KERN_ERR "fo_acc_free_queue: failed to fetch from queue, size = %d\n", size);
+                return 1; /* failure */
+            }
 
-        req->rvalue = -ENODATA;
-        complete(&req->comp); /* complete all pending file operations */
+            req->rvalue = -ENODATA;
+            complete(&req->comp); /* complete all pending file operations */
+        }
+        up_write(&acc->sem);
+        return 0; /* success */
     }
 
-    return 0; /* success */
+    return 1; /* failure */
 }
 
 /* find the filo operation request with the correct sequence number */

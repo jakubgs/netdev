@@ -294,7 +294,7 @@ int netlink_init(void)
     nl_cfg.input = netlink_recv; // function that will receive data
 
     nl_sk = netlink_kernel_create(&init_net,
-                                    NETLINK_PROTOCOL,
+                                    NETDEV_PROTOCOL,
                                     &nl_cfg);
 
     if(!nl_sk) {

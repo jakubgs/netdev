@@ -18,7 +18,7 @@
 
 /* defines the netlink bus used, we want our own protocol so we use the 
  * last one of the 32 available buses */
-#define NETLINK_PROTOCOL        31
+#define NETDEV_PROTOCOL        31
 
 /* define type of message for netlink driver control,
  * will be used in nlmsghdr->nlmsg_type */
