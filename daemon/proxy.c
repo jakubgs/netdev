@@ -252,9 +252,12 @@ int proxy_handle_remote(struct proxy_dev *pdev)
     } else {
         printf("proxy_handle_remote: unknown message type: %d\n",
                 ndhead->msgtype);
+        free(ndhead);
         return -1; /* failure */
     }
 
+    free(ndhead->payload);
+    free(ndhead);
     return 0;
 }
 
@@ -264,12 +267,13 @@ int proxy_handle_netlink(struct proxy_dev *pdev)
 {
     struct nlmsghdr *nlh = NULL;
     struct netdev_header *ndhead = NULL;
+    int rvalue = -1;
 
     nlh = netlink_recv(pdev);
 
     if (!nlh) {
         printf("proxy_handle_netlink: failed to receive message\n");
-        return -1; /* failure */
+        goto err;
     }
 
     if (nlh->nlmsg_type > MSGT_FO_START &&
@@ -281,22 +285,26 @@ int proxy_handle_netlink(struct proxy_dev *pdev)
         ndhead = malloc(sizeof(*ndhead));
         if (!ndhead) {
             perror("proxy_handle_netlink(malloc)");
-            return -1;
+            goto err;
         }
         ndhead->msgtype = nlh->nlmsg_type;
         ndhead->size = nlh->nlmsg_len;
         ndhead->payload = nlh;
 
         conn_send(pdev, ndhead);
+        free(ndhead);
     } else {
         printf("proxy_handle_netlink: unknown message type: %d\n",
                 nlh->nlmsg_type);
-        return -1; /* failure */
+        goto err;
     }
 
     /* if error or this message says it wants a response */
 
-    return 0; /* success */
+    rvalue = 0; /* success */
+err:
+    free(nlh);
+    return rvalue;
 }
 
 void proxy_sig_hup(int signo)
