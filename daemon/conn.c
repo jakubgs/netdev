@@ -203,7 +203,7 @@ int conn_send_dev_reg(struct proxy_dev *pdev) {
 
     ndhead->msgtype = MSGT_CONTROL_REG_SERVER;
     ndhead->size    = strlen(pdev->remote_dev_name); /* plus null */
-    ndhead->payload = pdev->remote_dev_name; /* TODO */
+    ndhead->payload = pdev->remote_dev_name;
 
     printf("conn_send_dev_reg: sending device name: %s\n",
             pdev->remote_dev_name);
