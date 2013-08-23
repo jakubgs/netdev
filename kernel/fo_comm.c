@@ -87,6 +87,7 @@ int fo_send(
 
     rvalue = req->rvalue;
 out:
+    kfree(buffer);
     ndmgm_put(acc->nddata);
     kmem_cache_free(acc->nddata->queue_pool, req);
     if (msgtype == MSGT_FO_RELEASE) {
@@ -180,6 +181,7 @@ int fo_execute(
     size_t bufflen = 0;
     int fonum = 0;
     int rvalue = -ENODATA;
+    int msgtype = nlh->nlmsg_type;
 
     req = fo_deserialize(acc, NLMSG_DATA(nlh));
     if (!req) {
@@ -189,7 +191,7 @@ int fo_execute(
     //debug("executing, pid = %d, seq = %d", acc->access_id, nlh->nlmsg_seq);
 
     /* get number of file operation for array */
-    fonum = nlh->nlmsg_type - (MSGT_FO_START+1);
+    fonum = msgtype - (MSGT_FO_START+1);
     /* get the correct file operation function from the array */
     fofun = netdev_recv_fops[fonum];
     if (!fofun) {
@@ -232,6 +234,9 @@ err:
     kfree(req->data);
     kmem_cache_free(acc->nddata->queue_pool, req);
     kfree(buff);
+    if (msgtype == MSGT_FO_RELEASE) {
+        fo_acc_destroy(acc);
+    }
     return rvalue;
 }
 
