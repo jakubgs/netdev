@@ -67,11 +67,11 @@ int netdev_listener(
         return -1;
     }
 
+    clilen = sizeof(cliaddr);
     printf("netdev_listener: starting listener at port: %d\n", port);
     while (1) {
-        clilen = sizeof(cliaddr);
-
-        if ((connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen)) < 0) {
+        connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen);
+        if (connfd < 0) {
             if (errno == EINTR) {
                 continue;
             } else {
