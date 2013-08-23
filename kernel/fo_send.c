@@ -20,7 +20,6 @@ loff_t ndfo_send_llseek(struct file *filp, loff_t offset, int whence)
                     NULL, 0);
 
     if (rvalue < 0) {
-        debug("rvalue = %lld", rvalue);
         return rvalue;
     }
     return args.rvalue;
@@ -49,14 +48,12 @@ ssize_t ndfo_send_read(struct file *filp, char __user *data, size_t size, loff_t
                     args.data, 0);
 
     if (rvalue < 0) {
-        debug("rvalue = %zu", rvalue);
         return rvalue;
     }
 
     *offset = args.offset;
     rvalue = copy_to_user(data, args.data, args.rvalue);
     if (rvalue > 0) {
-        debug("rvalue = %zu", rvalue);
         printk(KERN_ERR "ndfo_send_read: failed to copy to user\n");
         return -1;
     }
@@ -84,7 +81,6 @@ ssize_t ndfo_send_write(struct file *filp, const char __user *data, size_t size,
     *offset = args.offset;
     rvalue = copy_from_user(args.data, data, size);
     if (rvalue > 0) {
-        debug("rvalue = %zu", rvalue);
         printk(KERN_ERR "ndfo_send_write: failed to copy from user\n");
         return -EIO;
     }
@@ -95,7 +91,6 @@ ssize_t ndfo_send_write(struct file *filp, const char __user *data, size_t size,
                     args.data, size);
 
     if (rvalue < 0) {
-        debug("rvalue = %zu", rvalue);
         return rvalue;
     }
     kfree(args.data);
@@ -128,7 +123,6 @@ long ndfo_send_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long
                     NULL, 0);
 
     if (rvalue < 0) {
-        debug("rvalue = %ld", rvalue);
         return rvalue;
     }
     return args.rvalue;
@@ -148,7 +142,6 @@ long ndfo_send_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long a
                     NULL, 0);
 
     if (rvalue < 0) {
-        debug("rvalue = %ld", rvalue);
         return rvalue;
     }
     return args.rvalue;
@@ -161,9 +154,8 @@ int ndfo_send_open(struct inode *inode, struct file *filp)
 {
     int rvalue = 0;
     struct netdev_data *nddata = NULL;
-    struct fo_access *acc;
+    struct fo_access *acc = NULL;
     struct s_fo_open args = {
-        .inode = inode,
         .rvalue = -EIO
     };
 
@@ -185,7 +177,6 @@ int ndfo_send_open(struct inode *inode, struct file *filp)
                     NULL, 0);
 
     if (rvalue < 0) {
-        debug("rvalue = %d", rvalue);
         return rvalue;
     }
     return args.rvalue;
@@ -203,7 +194,6 @@ int ndfo_send_flush(struct file *filp, fl_owner_t id)
                     NULL, 0);
 
     if (rvalue < 0) {
-        debug("rvalue = %d", rvalue);
         return rvalue;
     }
     return args.rvalue;
@@ -221,7 +211,6 @@ int ndfo_send_release(struct inode *a, struct file *filp)
                     NULL, 0);
 
     if (rvalue < 0) {
-        debug("rvalue = %d", rvalue);
         return rvalue;
     }
     return args.rvalue;
