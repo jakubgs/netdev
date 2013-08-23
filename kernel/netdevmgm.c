@@ -47,7 +47,7 @@ struct netdev_data * ndmgm_alloc_data(
         goto free_cdev;
     }
 
-    sprintf(nddata->devname, "/dev/%s%d", name, minor);
+    sprintf(nddata->devname, "/dev/%s", name);
     hash_init(nddata->foacc_htable);
     init_rwsem(&nddata->sem);
     spin_lock_init(&nddata->nllock);
@@ -78,7 +78,7 @@ int ndmgm_create_dummy(
         printk(KERN_ERR "ndmgm_create_dummy: could not get minor\n");
         return 1;
     }
-    debug("creating dummy device: /dev/%s%d", name, minor);
+    debug("creating dummy device: /dev/%s", name);
 
     if ( (nddata = ndmgm_alloc_data(nlpid, name, minor)) == NULL ) {
         printk(KERN_ERR "ndmgm_create_dummy: failed to create netdev_data\n");
@@ -104,15 +104,13 @@ int ndmgm_create_dummy(
                             NULL,   /* no aprent device           */
                             nddata->cdev->dev, /* major and minor */
                             nddata, /* device data for callback   */
-                            "%s%d", /* defines name of the device */
-                            name, minor);
+                            "%s", /* defines name of the device */
+                            name);
 
     if (IS_ERR(nddata->device)) {
        err = PTR_ERR(nddata->device);
-       printk(KERN_WARNING "[target] Error %d while trying to name %s%d\n",
-                            err,
-                            name,
-                            minor);
+       printk(KERN_WARNING "[target] Error %d while trying to name %s\n",
+                            err, name);
        goto undo_cdev;
     }
 
