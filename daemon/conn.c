@@ -202,7 +202,7 @@ int conn_send_dev_reg(struct proxy_dev *pdev) {
     }
 
     ndhead->msgtype = MSGT_CONTROL_REG_SERVER;
-    ndhead->size    = strlen(pdev->remote_dev_name)+1; /* plus null */
+    ndhead->size    = strlen(pdev->remote_dev_name); /* plus null */
     ndhead->payload = pdev->remote_dev_name; /* TODO */
 
     printf("conn_send_dev_reg: sending device name: %s\n",
@@ -298,7 +298,7 @@ int sendall(int conn_fd, struct msghdr *msgh, int size) {
     int rvalue = 0, bytes = 0;
 
     do {
-        rvalue = sendmsg(conn_fd, msgh, msgh->msg_flags | MSG_DONTWAIT);
+        rvalue = sendmsg(conn_fd, msgh, msgh->msg_flags);
         //debug("rvalue = %d", rvalue);
         if (rvalue == -1) {
             perror("sendmsg(sendmsg)");
