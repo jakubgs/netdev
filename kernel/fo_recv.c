@@ -50,14 +50,6 @@ int ndfo_recv_write(struct fo_access *acc, struct fo_req *req) {
     return 0;
 }
 
-int ndfo_recv_aio_read(struct fo_access *acc, struct fo_req *req) {
-    return -1;
-}
-
-int ndfo_recv_aio_write(struct fo_access *acc, struct fo_req *req) {
-    return -1;
-}
-
 int ndfo_recv_poll(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
@@ -145,14 +137,6 @@ int ndfo_recv_lock(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
 
-int ndfo_recv_sendpage(struct fo_access *acc, struct fo_req *req) {
-    return -1;
-}
-
-int ndfo_recv_get_unmapped_area(struct fo_access *acc, struct fo_req *req) {
-    return -1;
-}
-
 int ndfo_recv_check_flags(struct fo_access *acc, struct fo_req *req) {
     return -1;
 }
@@ -191,20 +175,20 @@ int (*netdev_recv_fops[])(struct fo_access *, struct fo_req*) = {
     ndfo_recv_poll,/* NULL assumes it's not blocing */
     ndfo_recv_unlocked_ioctl,
     ndfo_recv_compat_ioctl,
-    ndfo_recv_mmap,
+    NULL, /* for mapping device memory to user space */
     ndfo_recv_open,
     ndfo_recv_flush, /* rarely used for devices */
     ndfo_recv_release,
     ndfo_recv_fsync,
     NULL, /* will be hard to implement because of kiocb */
     ndfo_recv_fasync,
-    ndfo_recv_lock, /* almost never implemented */
-    ndfo_recv_sendpage, /* usually not used */
-    ndfo_recv_get_unmapped_area, /* mostly NULL */
+    NULL, /* almost never implemented */
+    NULL, /* usually not used, for sockets */
+    NULL, /* mostly NULL */
     ndfo_recv_check_flags, /* fcntl(F_SETFL...) */
     ndfo_recv_flock,
-    ndfo_recv_splice_write, /* needs DMA */
-    ndfo_recv_splice_read, /* needs DMA */
+    NULL, /* needs DMA */
+    NULL, /* needs DMA */
     ndfo_recv_setlease,
     ndfo_recv_fallocate,
     ndfo_recv_show_fdinfo
