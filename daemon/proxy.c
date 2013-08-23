@@ -173,7 +173,7 @@ int proxy_loop(struct proxy_dev *pdev)
     debug("starting serving connections");
 
     /* Read message from kernel */
-    for ( ; ; ) {
+    while (1) {
         FD_ZERO(&rset); /* clear all file descriptors */
         FD_SET(pdev->us_fd[0], &rset); /* add unix socket */
         FD_SET(pdev->nl_fd, &rset); /* add netlink socket */
