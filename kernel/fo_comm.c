@@ -140,6 +140,11 @@ int fo_recv(
         rvalue = fo_execute(acc, nlh, skb);
     }
 
+    /* if open failed we need to free acc */
+    if (rvalue == -1 && msgtype == MSGT_FO_OPEN) {
+        fo_acc_destroy(acc);
+    }
+
     ndmgm_put(nddata);
     do_exit(rvalue);
 }
