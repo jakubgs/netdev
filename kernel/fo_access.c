@@ -8,6 +8,11 @@ struct fo_access * fo_acc_start(struct netdev_data *nddata, int pid) {
     int err = 0;
     struct fo_access *acc = NULL;
 
+    if (!nddata) {
+        printk(KERN_ERR "fo_acc_start: nddata is NULL\n");
+        return NULL;
+    }
+
     acc = kzalloc(sizeof(*acc), GFP_KERNEL);
     if (!acc) {
         printk(KERN_ERR "fo_acc_alloc: failed to allocate fo_access\n");
