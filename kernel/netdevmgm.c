@@ -26,7 +26,7 @@ struct netdev_data * ndmgm_alloc_data(
         return NULL;
     }
 
-    nddata->devname = kzalloc(strlen(name), GFP_KERNEL);
+    nddata->devname = kzalloc(strlen(name)+1, GFP_KERNEL);
     if (!nddata->devname) {
         printk(KERN_ERR "ndmgm_alloc_data: failed to allocate nddata\n");
         goto free_devname;
@@ -142,7 +142,7 @@ int ndmgm_create_server(
         return 1;
     }
 
-    nddata->devname = kzalloc(strlen(name), GFP_KERNEL);
+    nddata->devname = kzalloc(strlen(name)+1, GFP_KERNEL);
     if (!nddata->devname) {
         printk(KERN_ERR "ndmgm_create_server: failed to allocate nddata\n");
         goto free_nddata;
