@@ -218,7 +218,7 @@ int fo_execute(
         goto err;
     }
 
-    if (bufflen <= nlmsg_len(nlh)) {
+    if (bufflen == nlmsg_len(nlh)) {
         memcpy(nlmsg_data(nlh), buff, bufflen);
     } else {
         /* expand skb and put in data, possibly split into parts */
