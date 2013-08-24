@@ -207,7 +207,7 @@ int fo_execute(
     /* execute the file operation */
     req->rvalue = fofun(acc, req);
     if (req->rvalue == -1) {
-        printk(KERN_ERR "fo_execute: file operation failed\n");
+        printk(KERN_ERR "fo_execute: file operation failed = %d\n", msgtype);
         goto err;
     }
 
