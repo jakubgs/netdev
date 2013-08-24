@@ -233,7 +233,9 @@ struct sk_buff * netlink_pack_skb(
 {
     struct sk_buff *skb;
 
-    skb = alloc_skb(NLMSG_SPACE(bufflen), GFP_KERNEL);
+    nlh->nlmsg_len = NLMSG_SPACE(bufflen);
+
+    skb = alloc_skb(nlh->nlmsg_len, GFP_KERNEL);
     if (!skb) {
         printk(KERN_ERR "fo_exectue: failed to expand skb\n");
         return NULL;
