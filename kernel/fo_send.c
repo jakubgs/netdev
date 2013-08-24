@@ -32,6 +32,7 @@ ssize_t ndfo_send_read(struct file *filp, char __user *data, size_t size, loff_t
         .offset = *offset,
         .rvalue = -EIO
     };
+    debug("size = %zu", size);
     if (size >= NETDEV_MESSAGE_LIMIT) {
         printk(KERN_ERR "ndfo_send_read: buffor too big for message\n");
         return -EINVAL;
