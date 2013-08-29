@@ -9,7 +9,7 @@ This project has a goal of allowing the sharing of physical devices like charact
 Disclamer
 ---------
 
-The code is not yet stable or really usable. Test at your own peril. This WILL cause kernel panics.
+The code is not yet stable. Test at your own peril. This WILL cause kernel panics.
 
 Usage
 -----
@@ -26,7 +26,7 @@ Format of configuration file:
 
 Example:
 
-    /dev/urandom;netdev;192.168.1.13;9999
+    /dev/urandom;netdev_urandom;192.168.1.13;9999
 
 Some static limitations apply. For example limit of devices is 32 and is defined in include/protocol.h with NETDEV_MAX_DEVICES and NETDEV_HTABLE_DEV_SIZE.
 
